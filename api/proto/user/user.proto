@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "/user";
+
+import "google/protobuf/timestamp.proto"; // 使用timestamp类型
+
+message User {
+  int64 id = 1;
+  string email = 2;
+  string phone = 3;
+  string password = 4;
+  string nickname = 5;
+  string introduction = 6;
+  google.protobuf.Timestamp birthday = 7;
+}
+
+service UserService {
+  rpc SignUp (SignUpRequest) returns (SignUpResponse);
+  rpc Login (LoginRequest) returns (LoginResponse);
+  rpc Profile (ProfileRequest) returns (ProfileResponse);
+  rpc Edit (EditInfoRequest) returns (EditInfoResponse);
+  rpc FindOrCreate (FindOrCreateRequest) returns (FindOrCreateResponse);
+}
+
+// 注册
+
+message SignUpRequest {
+    User user = 1;
+}
+message SignUpResponse {}
+
+// 登录
+
+message LoginRequest {
+    string email = 1;
+    string password = 2;
+}
+message LoginResponse {
+    User user = 1;
+}
+
+// 获取个人信息
+
+message ProfileRequest {
+    int64 id = 1;
+}
+message ProfileResponse {
+    User user = 1;
+}
+
+// 编辑个人信息
+
+message EditInfoRequest {
+    User user = 1;
+}
+message EditInfoResponse {}
+
+// 手机短信验证
+
+message FindOrCreateRequest {
+    string phone = 1;
+}
+message FindOrCreateResponse {
+    int64 uid = 1;
+}
