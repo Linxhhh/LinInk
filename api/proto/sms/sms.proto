@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sms;
+
+option go_package = "/sms";
+
+service SmsService {
+    rpc Send (SendRequest) returns (SendResponse);
+}
+
+message SendRequest {
+    string tplId = 1;
+    repeated string args = 2;
+    repeated string numbers = 3;
+}
+message SendResponse{}
