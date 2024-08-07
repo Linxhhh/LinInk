@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package article;
+
+option go_package = "/article";
+
+import "google/protobuf/timestamp.proto"; // 使用timestamp类型
+
+message Article {
+    int64  id = 1;
+    string title = 2;
+    string content = 3;
+    int64  authorId = 4;
+    string authorName = 5;
+    uint32 status = 6;
+    google.protobuf.Timestamp ctime = 7;
+    google.protobuf.Timestamp utime = 8;
+}
+
+message ArticleListElem {
+    int64  id = 1;
+    string title = 2;
+    string abstract = 3;
+    uint32 status = 4;
+    google.protobuf.Timestamp ctime = 7;
+    google.protobuf.Timestamp utime = 8;
+}
+
+service ArticleService {
+    // 制作库接口
+    rpc Save (SaveRequest) returns (SaveResponse);
+    rpc Publish (PublishRequest) returns (PublishResponse);
+    rpc Withdraw (WithdrawRequest) returns (WithdrawResponse);
+    rpc Count (CountRequest) returns (CountResponse);
+    rpc list (ListRequest) returns (ListResponse);
+    rpc Detail (DetailRequest) returns (DetailResponse);
+    // 线上库接口
+    rpc PubDetail (PubDetailRequest) returns (PubDetailResponse);
+    rpc PubList (PubListRequest) returns (PubListResponse);
+}
+
+// 博主保存帖子（upsert）
+
+message SaveRequest {
+    Article article = 1;
+}
+message SaveResponse {
+    int64 aid = 1;
+}
+
+// 博主发表帖子
+
+message PublishRequest {
+    Article article = 1;
+}
+message PublishResponse {
+    int64 aid = 1;
+}
+
+// 博主撤销帖子
+
+message WithdrawRequest {
+    int64 uid = 1;
+    int64 aid = 2;
+}
+message WithdrawResponse {}
+
+// 博主获取帖子总数
+
+message CountRequest {
+    int64 uid = 1;
+}
+message CountResponse {
+    int64 count = 1;
+}
+
+// 博主获取帖子列表（分页）
+
+message ListRequest {
+    int64 uid = 1;
+    int32 page = 2;
+    int32 pageSize = 3;
+}
+message ListResponse {
+    repeated ArticleListElem list = 1;
+}
+
+// 博主获取帖子详情
+
+message DetailRequest {
+    int64 uid = 1;
+    int64 aid = 2;
+}
+message DetailResponse {
+    Article article = 1;
+}
+
+// 读者查看帖子详情
+
+message PubDetailRequest {
+    int64 aid = 1;
+}
+message PubDetailResponse {
+    Article article = 1;
+}
+
+// 读者获取帖子列表（首页帖子流）
+
+message PubListRequest {
+    google.protobuf.Timestamp timestamp = 1;
+    int32 limit = 2;
+    int32 offset = 3;
+}
+message PubListResponse {
+    repeated Article list = 1;
+}
