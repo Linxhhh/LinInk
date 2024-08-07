@@ -37,7 +37,7 @@ func (server *UserServiceServer) Edit(ctx context.Context, req *pb.EditInfoReque
 }
 
 func (server *UserServiceServer) Profile(ctx context.Context, req *pb.ProfileRequest) (*pb.ProfileResponse, error) {
-	user, err := server.svc.Profile(ctx, req.GetId())
+	user, err := server.svc.Profile(ctx, req.GetUid())
 	return &pb.ProfileResponse{User: convertToResp(user)}, err
 }
 
