@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package interaction;
+
+option go_package = "/interaction";
+
+message Interaction {
+    int64 id = 1;
+    string biz = 2;
+    int64 bizId = 3;
+    int64 readCnt = 4;
+    int64 likeCnt = 5;
+    int64 collectCnt = 6;
+
+    // 上面数据是一篇帖子的公共数据
+	// 下面数据是针对具体用户的数据
+    bool isLiked = 7;
+    bool isCollected = 8;
+}
+
+service InteractionService {
+    // 阅读
+    rpc IncrReadCnt (IncrReadCntRequest) returns (IncrReadCntResponse);
+
+    // 点赞
+    rpc Like (LikeRequest) returns (LikeResponse);
+    rpc CancelLike (CancelLikeRequest) returns (CancelLikeResponse);
+
+    // 收藏
+    rpc Collect (CollectRequest) returns (CollectResponse);
+    rpc CancelCollect (CancelCollectRequest) returns (CancelCollectResponse);
+    rpc CollectionList (CollectionListRequest) returns (CollectionListResponse);
+
+    // 计数
+    rpc Get(GetRequest) returns (GetResponse);
+}
+
+// 阅读
+
+message IncrReadCntRequest {
+    string biz = 1;
+    int64 bizId = 2;
+}
+message IncrReadCntResponse {}
+
+// 点赞
+
+message LikeRequest {
+    string biz = 1;
+    int64 bizId = 2;
+    int64 uid = 3;
+}
+message LikeResponse {}
+
+message CancelLikeRequest {
+    string biz = 1;
+    int64 bizId = 2;
+    int64 uid = 3;
+}
+message CancelLikeResponse {}
+
+// 收藏
+
+message CollectRequest {
+    string biz = 1;
+    int64 bizId = 2;
+    int64 uid = 3;
+}
+message CollectResponse {}
+
+message CancelCollectRequest {
+    string biz = 1;
+    int64 bizId = 2;
+    int64 uid = 3;
+}
+message CancelCollectResponse {}
+
+message CollectionListRequest {
+    string biz = 1;
+    int64 uid = 2;
+}
+message CollectionListResponse {
+    repeated int64 aidList = 1;
+}
+
+// 计数
+
+message GetRequest {
+    string biz = 1;
+    int64 bizId = 2;
+    int64 uid = 3;
+}
+message GetResponse {
+    Interaction interaction = 1;
+}
