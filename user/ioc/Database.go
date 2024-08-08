@@ -1,7 +1,7 @@
 package ioc
 
 import (
-	"github.com/Linxhhh/LinInk/internal/repository/dao"
+	"github.com/Linxhhh/LinInk/user/repository/dao"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -19,7 +19,9 @@ func InitDB() (master *gorm.DB, slaves []*gorm.DB) {
 
 	slaves = append(slaves, s1)
 
-	err = master.AutoMigrate(&dao.User{})
+	err = master.AutoMigrate(
+		&dao.User{},
+	)
 	if err != nil {
 		panic(err)
 	}
