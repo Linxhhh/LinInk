@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package follow;
+
+option go_package = "/follow";
+
+import "google/protobuf/timestamp.proto";
+
+message FollowData {
+	int64 id = 1;
+	int64 uid = 2;
+	int64 Followers = 3; // 粉丝数量
+	int64 Followees = 4; // 关注数量
+    google.protobuf.Timestamp ctime = 5;
+    google.protobuf.Timestamp utime = 6;
+
+	// 上面数据是每位用户的公共数据
+	// 下面数据是针对其它粉丝的数据
+	bool IsFollowed = 7;
+}
+
+message FollowRelation {
+	int64 id = 1;
+	int64 Follower = 2; // 粉丝
+	int64 Followee = 3; // 博主
+    google.protobuf.Timestamp ctime = 4;
+    google.protobuf.Timestamp utime = 5;
+}
+
+service FollowService {
+    rpc Follow (FollowRequest) returns (FollowResponse);
+    rpc CancelFollow (CancelFollowRequest) returns (CancelFollowResponse);
+    rpc GetFollowData (GetFollowDataRequest) returns (GetFollowDataResponse);
+    rpc GetFollowed (GetFollowedRequest) returns (GetFollowedResponse);
+    rpc GetFolloweeList (GetFolloweeListRequest) returns (GetFolloweeListResponse);
+    rpc GetFollowerList (GetFollowerListRequest) returns (GetFollowerListResponse);
+}
+
+// 关注
+
+message FollowRequest {
+    int64 followerId = 1;
+    int64 followeeId = 2;
+}
+message FollowResponse {}
+
+// 取消关注
+
+message CancelFollowRequest {
+    int64 followerId = 1;
+    int64 followeeId = 2;
+}
+message CancelFollowResponse {}
+
+// 获取用户关注数据（粉丝数，关注数）
+
+message GetFollowDataRequest {
+    int64 uid = 1;
+}
+message GetFollowDataResponse {
+    FollowData followData = 1;
+}
+
+// 是否关注某人
+
+message GetFollowedRequest {
+    int64 followerId = 1;
+    int64 followeeId = 2;
+}
+message GetFollowedResponse {
+    bool isFollowed = 1;
+}
+
+// 关注列表
+
+message GetFolloweeListRequest {
+    int64 followerId = 1;
+    int32 page = 2;
+    int32 pageSize = 3;
+}
+message GetFolloweeListResponse {
+    repeated int64 followeeList = 1;
+}
+
+// 粉丝列表
+
+message GetFollowerListRequest {
+    int64 followeeId = 1;
+    int32 page = 2;
+    int32 pageSize = 3;
+}
+message GetFollowerListResponse {
+    repeated int64 followerList = 1;
+}
