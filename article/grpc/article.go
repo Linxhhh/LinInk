@@ -68,6 +68,15 @@ func (server *ArticleServiceServer) PubList(ctx context.Context, req *pb.PubList
 	return &pb.PubListResponse{List: listResp}, err
 }
 
+func (server *ArticleServiceServer) CollectionList(ctx context.Context, req *pb.CollectionListRequest) (*pb.CollectionListResponse, error) {
+	list, err := server.svc.CollectionList(ctx, req.GetUid())
+	listResp := []*pb.Article{}
+	for _, elem := range list {
+		listResp = append(listResp, convertToPb(elem))
+	}
+	return &pb.CollectionListResponse{List: listResp}, err
+}
+
 // 类型转换：pb.Article -> domain.Article
 func convertToDomain(a *pb.Article) domain.Article {
 	domainArticle := domain.Article{}

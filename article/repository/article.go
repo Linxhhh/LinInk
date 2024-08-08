@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Linxhhh/LinInk/article/domain"
 	"github.com/Linxhhh/LinInk/article/repository/cache"
 	"github.com/Linxhhh/LinInk/article/repository/dao"
+	"gorm.io/gorm"
 )
 
 var ErrIncorrectArticleorAuthor = dao.ErrIncorrectArticleorAuthor
@@ -21,7 +23,7 @@ type ArticleRepository interface {
 	GetById(ctx context.Context, aid int64) (domain.Article, error)
 	GetPubById(ctx context.Context, aid int64) (domain.Article, error)
 	GetPubList(ctx context.Context, startTime time.Time, limit, offset int) ([]domain.Article, error)
-	SearchByTitle(ctx context.Context, title string, limit, offset int) ([]domain.Article, error)
+	GetCollectionList(ctx context.Context, aidList []int64) ([]domain.Article, error)
 }
 
 type CacheArticleRepository struct {
@@ -241,22 +243,17 @@ func (repo *CacheArticleRepository) GetPubList(ctx context.Context, startTime ti
 	return artList, err
 }
 
-func (repo *CacheArticleRepository) SearchByTitle(ctx context.Context, title string, limit, offset int) ([]domain.Article, error) {
-	pubList, err := repo.dao.SearchByTitle(ctx, title, limit, offset)
-	if err != nil {
-		return nil, err
+func (repo *CacheArticleRepository) GetCollectionList(ctx context.Context, aidList []int64) ([]domain.Article, error) {
+	var list []domain.Article
+	for _, aid := range aidList {
+		art, err := repo.GetPubById(ctx, aid)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return nil, err
+		}
+		list = append(list, art)
 	}
-	var artList []domain.Article
-	for _, elem := range pubList {
-		artList = append(artList, domain.Article{
-			Id:       elem.Id,
-			Title:    elem.Title,
-			Content:  elem.Content,
-			AuthorId: elem.AuthorId,
-			Ctime:    time.UnixMilli(elem.Ctime),
-			Utime:    time.UnixMilli(elem.Utime),
-			Status:   domain.ArticleStatus(elem.Status),
-		})
-	}
-	return artList, err
+	return list, nil
 }

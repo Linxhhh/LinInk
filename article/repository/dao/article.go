@@ -22,7 +22,6 @@ type ArticleDAO interface {
 	GetById(ctx context.Context, aid int64) (Article, error)
 	GetPubById(ctx context.Context, aid int64) (PublishedArticle, error)
 	GetPubList(ctx context.Context, startTime time.Time, offset, limit int) ([]PublishedArticle, error)
-	SearchByTitle(ctx context.Context, title string, limit, offset int) ([]PublishedArticle, error)
 }
 
 type GormArticleDAO struct {
@@ -192,13 +191,7 @@ func (dao *GormArticleDAO) GetPubList(ctx context.Context, startTime time.Time, 
 	return res, err
 }
 
-// SearchByTitle 按照标题模糊匹配
-func (dao *GormArticleDAO) SearchByTitle(ctx context.Context, title string, limit, offset int) ([]PublishedArticle, error) {
-	var res []PublishedArticle
-	err := dao.RandSalve().WithContext(ctx).Order("utime DESC").
-		Where("title like ?", "%"+title+"%").Limit(limit).Offset(offset).Find(&res).Error
-	return res, err
-}
+
 
 // Article 制作库
 type Article struct {

@@ -37,6 +37,7 @@ service ArticleService {
     // 线上库接口
     rpc PubDetail (PubDetailRequest) returns (PubDetailResponse);
     rpc PubList (PubListRequest) returns (PubListResponse);
+    rpc CollectionList (CollectionListRequest) returns (CollectionListResponse);
 }
 
 // 博主保存帖子（upsert）
@@ -112,5 +113,14 @@ message PubListRequest {
     int32 offset = 3;
 }
 message PubListResponse {
+    repeated Article list = 1;
+}
+
+// 用户获取收藏列表
+
+message CollectionListRequest {
+    int64 uid = 1;
+}
+message CollectionListResponse {
     repeated Article list = 1;
 }

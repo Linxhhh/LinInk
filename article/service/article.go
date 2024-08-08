@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Linxhhh/LinInk/api/proto/interaction"
 	"github.com/Linxhhh/LinInk/api/proto/user"
 	"github.com/Linxhhh/LinInk/article/domain"
 	"github.com/Linxhhh/LinInk/article/repository"
@@ -13,14 +14,18 @@ import (
 var ErrIncorrectArticleorAuthor = repository.ErrIncorrectArticleorAuthor
 
 type ArticleService struct {
-	repo    repository.ArticleRepository
-	userCli user.UserServiceClient
+	repo     repository.ArticleRepository
+	userCli  user.UserServiceClient
+	interCli interaction.InteractionServiceClient
+	Biz      string
 }
 
-func NewArticleService(repo repository.ArticleRepository, userCli user.UserServiceClient) *ArticleService {
+func NewArticleService(repo repository.ArticleRepository, userCli user.UserServiceClient, interCli interaction.InteractionServiceClient) *ArticleService {
 	return &ArticleService{
 		repo:     repo,
-		userCli: userCli,
+		userCli:  userCli,
+		interCli: interCli,
+		Biz:      "article",
 	}
 }
 
@@ -76,6 +81,33 @@ func (as *ArticleService) PubDetail(ctx context.Context, aid int64) (domain.Arti
 
 func (as *ArticleService) PubList(ctx context.Context, startTime time.Time, limit, offset int) ([]domain.Article, error) {
 	arts, err := as.repo.GetPubList(ctx, startTime, offset, limit)
+	if err != nil {
+		return []domain.Article{}, err
+	}
+	for i := range arts {
+		// 获取 AuthorName
+		user, err := as.userCli.Profile(ctx, &user.ProfileRequest{Uid: arts[i].AuthorId})
+		if err != nil {
+			return []domain.Article{}, errors.New("查找用户失败")
+		}
+		arts[i].AuthorName = user.GetUser().GetNickname()
+	}
+	return arts, nil
+}
+
+func (as *ArticleService) CollectionList(ctx context.Context, uid int64) ([]domain.Article, error) {
+
+	// 获取 aidList
+	resp, err := as.interCli.CollectionList(ctx, &interaction.CollectionListRequest{
+		Biz: as.Biz,
+		Uid: uid,
+	})
+	if err != nil {
+		return []domain.Article{}, err
+	}
+
+	// 获取 article List
+	arts, err := as.repo.GetCollectionList(ctx, resp.GetAidList())
 	if err != nil {
 		return []domain.Article{}, err
 	}

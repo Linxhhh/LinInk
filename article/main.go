@@ -27,11 +27,12 @@ func main() {
 	// init article repository
 	repo := repository.NewArticleRepository(dao, cache)
 
-	// init user service client
-	cli := ioc.InitUserRpcClient() 
+	// init user and interaction service client
+	userCli := ioc.InitUserRpcClient() 
+	interCli := ioc.InitInteractionRpcClient()
 
 	// init article service
-	svc := service.NewArticleService(repo, cli)
+	svc := service.NewArticleService(repo, userCli, interCli)
 
 	// init article service server
 	svr := server.NewArticleServiceServer(svc)
