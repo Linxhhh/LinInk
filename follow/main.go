@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/follow"
@@ -37,11 +38,11 @@ func main() {
 	// listen port
 	listener, err := net.Listen("tcp", ":3338")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	// start serve
 	if err = grpcServer.Serve(listener); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
