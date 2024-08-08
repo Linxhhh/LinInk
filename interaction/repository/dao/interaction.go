@@ -147,7 +147,7 @@ func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, id in
 
 		// 软删除用户点赞记录
 		err := tx.Model(&UserLike{}).
-			Where("uid=? AND biz_id = ? AND biz=?", uid, id, biz).
+			Where("biz_id = ? AND biz=? AND uid=?", id, biz, uid).
 			Updates(map[string]interface{}{
 				"utime":  now,
 				"status": 0,
@@ -158,7 +158,7 @@ func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, id in
 
 		// 点赞量 -1
 		return tx.Model(&Interaction{}).
-			Where("biz =? AND biz_id=?", biz, id).
+			Where("biz_id=? AND biz =?", id, biz).
 			Updates(map[string]interface{}{
 				"like_cnt": gorm.Expr("`like_cnt` - 1"),
 				"utime":    now,
@@ -237,7 +237,7 @@ func (dao *GORMInteractionDAO) DeleteCollection(ctx context.Context, biz string,
 
 		// 收藏量 -1
 		return tx.Model(&Interaction{}).
-			Where("biz =? AND biz_id=?", biz, id).
+			Where("biz_id=? AND biz =?", id, biz).
 			Updates(map[string]interface{}{
 				"collect_cnt": gorm.Expr("`collect_cnt` - 1"),
 				"utime":       now,
@@ -247,9 +247,11 @@ func (dao *GORMInteractionDAO) DeleteCollection(ctx context.Context, biz string,
 
 type UserLike struct {
 	Id     int64  `gorm:"primaryKey,autoIncrement"`
-	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+
 	BizId  int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	Biz    string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+
 	Status int
 	Utime  int64
 	Ctime  int64
@@ -257,9 +259,11 @@ type UserLike struct {
 
 type UserCollection struct {
 	Id     int64  `gorm:"primaryKey,autoIncrement"`
-	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	
 	BizId  int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 	Biz    string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+
 	Status int
 	Utime  int64
 	Ctime  int64
