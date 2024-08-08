@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package feed;
+
+option go_package = "/feed";
+
+import "google/protobuf/timestamp.proto";
+
+message FeedEvent {
+	int64 id = 1;
+    int64 uid = 2;
+	string type = 3;
+	google.protobuf.Timestamp ctime = 4;
+	string ext = 5;
+}
+
+service FeedService {
+    rpc Create (CreateRequest) returns (CreateResponse);
+    rpc GetList (GetListRequest) returns (GetListResponse);
+}
+
+// 创建 feed 事件
+
+message CreateRequest {
+    FeedEvent feed = 1;
+}
+message CreateResponse {}
+
+// 获取 feed 列表
+
+message GetListRequest {
+    int64 uid = 1;
+    int64 timestamp = 2;
+    int64 limit = 3;
+}
+message GetListResponse {
+    repeated FeedEvent list = 1;
+}
