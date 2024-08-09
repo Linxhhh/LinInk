@@ -5,6 +5,7 @@ import (
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/sms"
+	"github.com/Linxhhh/LinInk/sms/ioc"
 	server "github.com/Linxhhh/LinInk/sms/grpc"
 	"github.com/Linxhhh/LinInk/sms/service"
 	"google.golang.org/grpc"
@@ -25,6 +26,12 @@ func main() {
 	// Listen port
 	listener, err := net.Listen("tcp", ":3335")
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	// register to etcd
+	etcdCli := ioc.InitEtcdClient()
+	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
 		log.Fatal(err)
 	}
 
