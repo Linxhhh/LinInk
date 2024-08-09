@@ -28,8 +28,9 @@ func main() {
 	repo := repository.NewArticleRepository(dao, cache)
 
 	// init user and interaction service client
-	userCli := ioc.InitUserRpcClient() 
-	interCli := ioc.InitInteractionRpcClient()
+	etcdCli := ioc.InitEtcdClient()
+	userCli := ioc.InitUserRpcClient(etcdCli) 
+	interCli := ioc.InitInteractionRpcClient(etcdCli)
 
 	// init article service
 	svc := service.NewArticleService(repo, userCli, interCli)
@@ -44,6 +45,11 @@ func main() {
 	// Listen port
 	listener, err := net.Listen("tcp", ":3336")
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	// register to etcd
+	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
 		log.Fatal(err)
 	}
 
