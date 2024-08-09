@@ -23,7 +23,8 @@ func main() {
 	repo := repository.NewCodeRepository(cache)
 	
 	// Create sms service client
-	cli := ioc.InitSmsRpcClient()
+	etcdCli := ioc.InitEtcdClient()
+	cli := ioc.InitSmsRpcClient(etcdCli)
 
 	// Create code service server
 	svc := service.NewCodeService(repo, cli)
@@ -35,6 +36,11 @@ func main() {
 	// Listen port
 	listener, err := net.Listen("tcp", ":3334")
 	if err != nil {
+		log.Fatal(err)
+	}
+	
+	// register to etcd
+	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
 		log.Fatal(err)
 	}
 
