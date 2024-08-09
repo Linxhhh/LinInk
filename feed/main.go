@@ -29,7 +29,8 @@ func main() {
 	repo := repository.NewFeedEventRepo(pulldao, pushdao, cache)
 	
 	// init client
-	cli := ioc.InitFollowRpcClient()
+	etcdCli := ioc.InitEtcdClient()
+	cli := ioc.InitFollowRpcClient(etcdCli)
 
 	// init service
 	svc := service.NewFeedEventService(repo, cli)
@@ -44,6 +45,11 @@ func main() {
 	// listen port
 	listener, err := net.Listen("tcp", ":3339")
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	// register to etcd
+	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
 		log.Fatal(err)
 	}
 
