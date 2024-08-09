@@ -43,6 +43,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// register to etcd
+	etcdCli := ioc.InitEtcdClient()
+	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
+		log.Fatal(err)
+	}
+
 	// Start serve
 	if err = grpcServer.Serve(listener); err != nil {
 		log.Fatal(err)
