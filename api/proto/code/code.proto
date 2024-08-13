@@ -15,7 +15,9 @@ message SendRequest {
     string biz = 1;
     string phone = 2;
 }
-message SendResponse{}
+message SendResponse{
+    bool busy = 1;
+}
 
 // 验证验证码
 
@@ -24,4 +26,7 @@ message VerifyRequest {
     string phone = 2;
     string inputCode = 3;
 }
-message VerifyResponse {}
+message VerifyResponse {
+    bool busy = 1;
+    bool fail = 2;
+}
