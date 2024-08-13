@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Linxhhh/LinInk/internal/app/middleware"
+	"github.com/Linxhhh/LinInk/bff/app/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )

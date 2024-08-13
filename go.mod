@@ -4,7 +4,7 @@ go 1.21.5
 
 require (
 	github.com/IBM/sarama v1.43.2
-	github.com/Linxhhh/webook v0.0.0-20240730103502-2c8c37a90310
+	github.com/Linxhhh/LinInk v0.0.0-20240730103502-2c8c37a90310
 	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/dlclark/regexp2 v1.11.4
 	github.com/gin-contrib/cors v1.7.2
