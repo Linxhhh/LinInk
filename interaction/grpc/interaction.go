@@ -24,6 +24,11 @@ func (server *InteractionServiceServer) IncrReadCnt(ctx context.Context, req *pb
 	return &pb.IncrReadCntResponse{}, err
 }
 
+func (server *InteractionServiceServer) BatchIncrReadCnt(ctx context.Context, req *pb.BatchIncrReadCntRequest) (*pb.BatchIncrReadCntResponse, error) {
+	err := server.svc.BatchIncrReadCnt(ctx, req.GetBizs(), req.GetBizIds())
+	return &pb.BatchIncrReadCntResponse{}, err
+}
+
 func (server *InteractionServiceServer) Like(ctx context.Context, req *pb.LikeRequest) (*pb.LikeResponse, error) {
 	err := server.svc.Like(ctx, req.GetBiz(), req.GetBizId(), req.GetUid())
 	return &pb.LikeResponse{}, err

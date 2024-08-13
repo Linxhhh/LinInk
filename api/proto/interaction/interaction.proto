@@ -21,6 +21,7 @@ message Interaction {
 service InteractionService {
     // 阅读
     rpc IncrReadCnt (IncrReadCntRequest) returns (IncrReadCntResponse);
+    rpc BatchIncrReadCnt (BatchIncrReadCntRequest) returns (BatchIncrReadCntResponse);
 
     // 点赞
     rpc Like (LikeRequest) returns (LikeResponse);
@@ -42,6 +43,12 @@ message IncrReadCntRequest {
     int64 bizId = 2;
 }
 message IncrReadCntResponse {}
+
+message BatchIncrReadCntRequest {
+    repeated string bizs = 1;
+    repeated int64 bizIds = 2;
+}
+message BatchIncrReadCntResponse {}
 
 // 点赞
 

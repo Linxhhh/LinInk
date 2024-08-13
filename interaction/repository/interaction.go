@@ -10,6 +10,7 @@ import (
 
 type InteractionRepository interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
+	BatchIncrReadCnt(ctx context.Context, bizs []string, bizIds []int64) error
 	Like(ctx context.Context, biz string, bizId int64, uid int64) error
 	CancelLike(ctx context.Context, biz string, bizId int64, uid int64) error
 	Collect(ctx context.Context, biz string, bizId int64, uid int64) error
@@ -40,6 +41,20 @@ func (repo *CacheInteractionRepository) IncrReadCnt(ctx context.Context, biz str
 		return err
 	}
 	return repo.cache.IncrReadCnt(ctx, biz, bizId)
+}
+
+func (repo *CacheInteractionRepository) BatchIncrReadCnt(ctx context.Context, bizs []string, bizIds []int64) error {
+	err := repo.dao.BatchIncrReadCnt(ctx, bizs, bizIds)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for i := 0; i < len(bizs); i++ {
+			repo.cache.IncrReadCnt(ctx, bizs[i], bizIds[i])
+			// 记录错误日志
+		}
+	}()
+	return nil
 }
 
 // -------------------------------------------------------------------------------------------------------------------------

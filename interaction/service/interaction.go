@@ -22,6 +22,10 @@ func (svc *InteractionService) IncrReadCnt(ctx context.Context, biz string, bizI
 	return svc.repo.IncrReadCnt(ctx, biz, bizId)
 }
 
+func (svc *InteractionService) BatchIncrReadCnt(ctx context.Context, bizs []string, bizIds []int64) error {
+	return svc.repo.BatchIncrReadCnt(ctx, bizs, bizIds)
+}
+
 func (svc *InteractionService) Like(ctx context.Context, biz string, bizId int64, uid int64) error {
 	return svc.repo.Like(ctx, biz, bizId, uid)
 }
