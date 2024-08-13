@@ -97,8 +97,10 @@ func (s *BreakerTestSuite) TestClient() {
 	t := s.T()
 	etcdResolver, err := resolver.NewBuilder(s.cli)
 	require.NoError(s.T(), err)
-	cc, err := grpc.Dial("etcd:///service/user",
+	cc, err := grpc.Dial(
+		"etcd:///service/user",
 		grpc.WithResolvers(etcdResolver),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithDefaultServiceConfig(`
 {
   "loadBalancingConfig": [{"round_robin": {}}],
@@ -115,8 +117,7 @@ func (s *BreakerTestSuite) TestClient() {
     }
   ]
 }
-`),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+`))
 	require.NoError(t, err)
 	client := user.NewUserServiceClient(cc)
 	for i := 0; i < 20; i++ {
