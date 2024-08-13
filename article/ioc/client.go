@@ -3,6 +3,7 @@ package ioc
 import (
 	"log"
 
+	"github.com/Linxhhh/LinInk/api/proto/feed"
 	"github.com/Linxhhh/LinInk/api/proto/interaction"
 	"github.com/Linxhhh/LinInk/api/proto/user"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -31,6 +32,26 @@ func InitUserRpcClient(cli *clientv3.Client) user.UserServiceClient {
 	return client
 }
 
+func InitFeedRpcClient(cli *clientv3.Client) feed.FeedServiceClient {
+
+	// Create resolver builder
+	resolverBuilder, err := resolver.NewBuilder(cli)
+	if err != nil {
+		log.Fatalf("create resolver builder failed, err : %s", err)
+	}
+
+	// Conn gRPC
+	conn, _ := grpc.NewClient(
+		"etcd:///LinInk/feedService",
+		grpc.WithResolvers(resolverBuilder),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
+
+	client := feed.NewFeedServiceClient(conn)
+	return client
+}
+
 func InitInteractionRpcClient(cli *clientv3.Client) interaction.InteractionServiceClient {
 
 	// Create resolver builder
@@ -53,7 +74,7 @@ func InitInteractionRpcClient(cli *clientv3.Client) interaction.InteractionServi
 
 /*
 
-// 所有 dns 域名解析来连接
+// 使用 dns 域名解析来连接
 
 func InitUserRpcClient() user.UserServiceClient {
 

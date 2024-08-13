@@ -8,24 +8,32 @@ import (
 	"github.com/Linxhhh/LinInk/api/proto/interaction"
 	"github.com/Linxhhh/LinInk/api/proto/user"
 	"github.com/Linxhhh/LinInk/article/domain"
+	"github.com/Linxhhh/LinInk/article/events"
 	"github.com/Linxhhh/LinInk/article/repository"
 )
 
 var ErrIncorrectArticleorAuthor = repository.ErrIncorrectArticleorAuthor
 
 type ArticleService struct {
-	repo     repository.ArticleRepository
-	userCli  user.UserServiceClient
-	interCli interaction.InteractionServiceClient
-	Biz      string
+	repo       repository.ArticleRepository
+	userCli    user.UserServiceClient
+	interCli   interaction.InteractionServiceClient
+	publishPdr *events.ArticlePublishEventProducer
+	readPdr    *events.ArticleReadEventProducer
+	Biz        string
 }
 
-func NewArticleService(repo repository.ArticleRepository, userCli user.UserServiceClient, interCli interaction.InteractionServiceClient) *ArticleService {
+func NewArticleService(repo repository.ArticleRepository,
+	userCli user.UserServiceClient, interCli interaction.InteractionServiceClient,
+	publishPdr *events.ArticlePublishEventProducer, readPdr *events.ArticleReadEventProducer) *ArticleService {
+
 	return &ArticleService{
-		repo:     repo,
-		userCli:  userCli,
-		interCli: interCli,
-		Biz:      "article",
+		repo:       repo,
+		userCli:    userCli,
+		interCli:   interCli,
+		publishPdr: publishPdr,
+		readPdr:    readPdr,
+		Biz:        "article",
 	}
 }
 
@@ -39,7 +47,22 @@ func (as *ArticleService) Save(ctx context.Context, art domain.Article) (int64, 
 
 func (as *ArticleService) Publish(ctx context.Context, art domain.Article) (int64, error) {
 	art.Status = domain.ArticleStatusPublished
-	return as.repo.Sync(ctx, art)
+	aid, err := as.repo.Sync(ctx, art)
+	if err != nil {
+		return 0, err
+	}
+
+	// 生成 feed 事件
+	go func() {
+		if err == nil {
+			as.publishPdr.Produce(events.ArticlePublishEvent{
+				Aid:   aid,
+				Uid:   art.AuthorId,
+				Title: art.Title,
+			})
+		}
+	}()
+	return aid, err
 }
 
 func (as *ArticleService) Withdraw(ctx context.Context, uid int64, aid int64) error {
@@ -69,6 +92,13 @@ func (as *ArticleService) PubDetail(ctx context.Context, aid int64) (domain.Arti
 	if err != nil {
 		return domain.Article{}, err
 	}
+
+	// 添加 readCnt
+	go func() {
+		if err == nil {
+			as.readPdr.ProduceEvent(events.ArticleReadEvent{Aid: aid})
+		}
+	}()
 
 	// 获取 AuthorName
 	user, err := as.userCli.Profile(ctx, &user.ProfileRequest{Uid: art.AuthorId})

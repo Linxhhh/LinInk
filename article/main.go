@@ -5,6 +5,7 @@ import (
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/article"
+	"github.com/Linxhhh/LinInk/article/events"
 	server "github.com/Linxhhh/LinInk/article/grpc"
 	"github.com/Linxhhh/LinInk/article/ioc"
 	"github.com/Linxhhh/LinInk/article/repository"
@@ -30,10 +31,29 @@ func main() {
 	// init user and interaction service client
 	etcdCli := ioc.InitEtcdClient()
 	userCli := ioc.InitUserRpcClient(etcdCli) 
+	feedCli := ioc.InitFeedRpcClient(etcdCli)
 	interCli := ioc.InitInteractionRpcClient(etcdCli)
 
+	// init sarama producer
+	cli := ioc.InitSaramaClient()
+	pdr := ioc.InitSyncProducer(cli)
+
+	// init publish and read event producer
+	publishPdr := events.NewArticlePublishEventProducer(pdr)
+	readPdr := events.NewArticleReadEventProducer(pdr)
+
+	// init publish and read event consumer
+	publishCsmr := events.NewArticlePublishEventConsumer(cli, feedCli)
+	go func ()  {
+		publishCsmr.Start("article_publish")
+	}()
+	readCsmr := events.NewArticleReadEventConsumer(cli, interCli)
+	go func ()  {
+		readCsmr.StartBatch("article_read")	
+	}()
+
 	// init article service
-	svc := service.NewArticleService(repo, userCli, interCli)
+	svc := service.NewArticleService(repo, userCli, interCli, publishPdr, readPdr)
 
 	// init article service server
 	svr := server.NewArticleServiceServer(svc)
