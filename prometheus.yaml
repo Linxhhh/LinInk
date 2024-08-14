@@ -1,0 +1,10 @@
+global:
+  external_labels:
+    monitor: 'prometheus-monitor'
+
+scrape_configs:
+  - job_name: "linink"
+    scrape_interval: 15s
+    scrape_timeout: 3s
+    static_configs:
+      - targets: [ "host.docker.internal:8081"]

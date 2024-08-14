@@ -1,17 +1,21 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/Linxhhh/LinInk/bff/app"
 	"github.com/Linxhhh/LinInk/bff/ioc"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
-	webserver := InitWebServer()
-	webserver.Run(":8080")
+	svr := initWebServer()
+	initPrometheus()
+	svr.Run(":8080")
 }
 
-func InitWebServer() *gin.Engine {
+func initWebServer() *gin.Engine {
 
 	// client
 	cli := ioc.InitEtcdClient()
@@ -31,4 +35,11 @@ func InitWebServer() *gin.Engine {
 
 	// router
 	return ioc.InitRouter(hdlFuncs, userHandler, articleHandler, followHandler)
+}
+
+func initPrometheus() {
+	go func ()  {
+		http.Handle("/metrics", promhttp.Handler())
+		http.ListenAndServe(":8081", nil)
+	}()
 }
