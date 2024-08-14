@@ -9,6 +9,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var ignorePaths = []string{
+	"/user/signup", 
+	"/user/login",
+	"/user/sms/send",
+	"/user/sms/verify",
+}
+
 /*
 AuthByJWT 鉴权中间件：
 */

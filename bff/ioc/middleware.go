@@ -15,6 +15,14 @@ func InitMiddleware() []gin.HandlerFunc {
 		// 注册鉴权中间件
 		middleware.AuthByJWT(),
 
+		// 注册指标采集中间件
+		(&middleware.MetricsMiddlewareBuilder{
+			Namespace: "LinInk",
+			Subsystem: "bff",
+			Name:      "gin_http",
+		}).Build(),
+
+
 		// 配置 CORS
 		cors.New(cors.Config{
 			AllowCredentials: true,
