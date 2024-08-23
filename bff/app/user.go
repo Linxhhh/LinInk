@@ -93,7 +93,7 @@ func (hdl *UserHandler) SignUp(ctx *gin.Context) {
 			Password: req.Password,
 		})
 	*/
-	_, err := hdl.svc.SignUp(ctx, &user.SignUpRequest{
+	_, err := hdl.svc.SignUp(ctx.Request.Context(), &user.SignUpRequest{
 		User: &user.User{
 			Email:    req.Email,
 			Password: req.Password,
@@ -138,7 +138,7 @@ func (hdl *UserHandler) LoginBySession(ctx *gin.Context) {
 
 	// 调用服务
 	// user, err := hdl.svc.Login(ctx, req.Email, req.Password)
-	resp, err := hdl.svc.Login(ctx, &user.LoginRequest{
+	resp, err := hdl.svc.Login(ctx.Request.Context(), &user.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -177,7 +177,7 @@ func (hdl *UserHandler) LoginByJWT(ctx *gin.Context) {
 
 	// 调用服务
 	// user, err := hdl.svc.Login(ctx, req.Email, req.Password)
-	resp, err := hdl.svc.Login(ctx, &user.LoginRequest{
+	resp, err := hdl.svc.Login(ctx.Request.Context(), &user.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -228,7 +228,7 @@ func (hdl *UserHandler) SendSmsCode(ctx *gin.Context) {
 
 	// 调用底层服务
 	// err := hdl.codeSvc.Send(ctx, biz, req.Phone)
-	_, err := hdl.codeSvc.Send(ctx, &code.SendRequest{
+	_, err := hdl.codeSvc.Send(ctx.Request.Context(), &code.SendRequest{
 		Biz:   biz,
 		Phone: req.Phone,
 	})
@@ -265,7 +265,7 @@ func (hdl *UserHandler) VerifySmsCode(ctx *gin.Context) {
 
 	// 验证码校验
 	// err := hdl.codeSvc.Verify(ctx, biz, req.Phone, req.Code)
-	codeResp, err := hdl.codeSvc.Verify(ctx, &code.VerifyRequest{
+	codeResp, err := hdl.codeSvc.Verify(ctx.Request.Context(), &code.VerifyRequest{
 		Biz:       biz,
 		Phone:     req.Phone,
 		InputCode: req.Code,
@@ -285,7 +285,7 @@ func (hdl *UserHandler) VerifySmsCode(ctx *gin.Context) {
 
 	// 查找或创建 User
 	// uid, err := hdl.svc.FindOrCreate(ctx, req.Phone)
-	resp, err := hdl.svc.FindOrCreate(ctx, &user.FindOrCreateRequest{Phone: req.Phone})
+	resp, err := hdl.svc.FindOrCreate(ctx.Request.Context(), &user.FindOrCreateRequest{Phone: req.Phone})
 	if err != nil {
 		res.FailWithMsg("系统错误", ctx)
 		return
@@ -362,7 +362,7 @@ func (hdl *UserHandler) Edit(ctx *gin.Context) {
 
 	// 调用下层服务
 	// err := hdl.svc.Edit(ctx, user)
-	_, err := hdl.svc.Edit(ctx, &user.EditInfoRequest{
+	_, err := hdl.svc.Edit(ctx.Request.Context(), &user.EditInfoRequest{
 		User: &u,
 	})
 	if err != nil {
@@ -402,7 +402,7 @@ func (hdl *UserHandler) Profile(ctx *gin.Context) {
 
 	// 调用下层服务
 	// user, err := hdl.svc.Profile(ctx, claims.UserId)
-	resp, err := hdl.svc.Profile(ctx, &user.ProfileRequest{Uid: claims.UserId})
+	resp, err := hdl.svc.Profile(ctx.Request.Context(), &user.ProfileRequest{Uid: claims.UserId})
 	if err != nil {
 		res.FailWithMsg("系统错误", ctx)
 		return

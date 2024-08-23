@@ -8,6 +8,8 @@ import (
 	"github.com/Linxhhh/LinInk/bff/app/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func InitMiddleware() []gin.HandlerFunc {
@@ -22,12 +24,14 @@ func InitMiddleware() []gin.HandlerFunc {
 			Name:      "gin_http",
 		}).Build(),
 
+		// 注册链路追踪中间件
+		otelgin.Middleware("LinInk"),
 
 		// 配置 CORS
 		cors.New(cors.Config{
 			AllowCredentials: true,
 			AllowHeaders:     []string{"Content-Type", "jwt-token"},
-			ExposeHeaders:    []string{"jwt-token", "Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
+			ExposeHeaders:    []string{"jwt-token", "trace-id", "Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type"},
 			// AllowAllOrigins:  true,
 			AllowOriginFunc: func(origin string) bool {
 				// 允许开发环境的 localhost 和 127.0.0.1
@@ -42,6 +46,9 @@ func InitMiddleware() []gin.HandlerFunc {
 
 		// 处理 Options
 		handleOptions(),
+
+		// 设置 Trace Id
+		setHeader(),
 	}
 }
 
@@ -53,6 +60,13 @@ func handleOptions() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+// 在响应头中设置 Trace Id
+func setHeader() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("trace-id", trace.SpanFromContext(c.Request.Context()).SpanContext().TraceID().String())
 	}
 }
 

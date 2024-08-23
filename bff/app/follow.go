@@ -48,13 +48,13 @@ func (hdl *FollowHandler) Follow(ctx *gin.Context) {
 	var err error
 	if req.Follow {
 		// err = hdl.svc.Follow(ctx, claims.UserId, req.Id)
-		_, err = hdl.svc.Follow(ctx, &follow.FollowRequest{
+		_, err = hdl.svc.Follow(ctx.Request.Context(), &follow.FollowRequest{
 			FollowerId: claims.UserId,
 			FolloweeId: req.Id,
 		})
 	} else {
 		// err = hdl.svc.CancelFollow(ctx, claims.UserId, req.Id)
-		_, err = hdl.svc.CancelFollow(ctx, &follow.CancelFollowRequest{
+		_, err = hdl.svc.CancelFollow(ctx.Request.Context(), &follow.CancelFollowRequest{
 			FollowerId: claims.UserId,
 			FolloweeId: req.Id,
 		})
@@ -81,7 +81,7 @@ func (hdl *FollowHandler) FollowData(ctx *gin.Context) {
 
 	// 获取用户关系数据
 	// data, err := hdl.svc.GetFollowData(ctx, uid)
-	resp, err := hdl.svc.GetFollowData(ctx, &follow.GetFollowDataRequest{Uid: uid})
+	resp, err := hdl.svc.GetFollowData(ctx.Request.Context(), &follow.GetFollowDataRequest{Uid: uid})
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			res.OKWithData(resp.GetFollowData(), ctx)
@@ -93,7 +93,7 @@ func (hdl *FollowHandler) FollowData(ctx *gin.Context) {
 
 	if uid != claims.UserId {
 		// data.IsFollowed, err = hdl.svc.GetFollowed(ctx, claims.UserId, uid)
-		followedResp, err := hdl.svc.GetFollowed(ctx, &follow.GetFollowedRequest{
+		followedResp, err := hdl.svc.GetFollowed(ctx.Request.Context(), &follow.GetFollowedRequest{
 			FollowerId: claims.UserId,
 			FolloweeId: uid,
 		})
@@ -137,7 +137,7 @@ func (hdl *FollowHandler) FolloweeList(ctx *gin.Context) {
 
 	// 调用下层服务
 	// articleList, err := hdl.svc.GetFolloweeList(ctx, claims.UserId, req.Page, req.PageSize)
-	resp, err := hdl.svc.GetFolloweeList(ctx, &follow.GetFolloweeListRequest{
+	resp, err := hdl.svc.GetFolloweeList(ctx.Request.Context(), &follow.GetFolloweeListRequest{
 		FollowerId: claims.UserId,
 		Page:       int32(req.Page),
 		PageSize:   int32(req.PageSize),
@@ -171,7 +171,7 @@ func (hdl *FollowHandler) FollowerList(ctx *gin.Context) {
 
 	// 调用下层服务
 	// articleList, err := hdl.svc.GetFollowerList(ctx, claims.UserId, req.Page, req.PageSize)
-	resp, err := hdl.svc.GetFollowerList(ctx, &follow.GetFollowerListRequest{
+	resp, err := hdl.svc.GetFollowerList(ctx.Request.Context(), &follow.GetFollowerListRequest{
 		FolloweeId: claims.UserId,
 		Page:       int32(req.Page),
 		PageSize:   int32(req.PageSize),

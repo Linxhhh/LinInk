@@ -69,7 +69,7 @@ func (hdl *ArticleHandler) Edit(ctx *gin.Context) {
 			AuthorId: claims.UserId,
 		})
 	*/
-	resp, err := hdl.svc.Save(ctx, &article.SaveRequest{
+	resp, err := hdl.svc.Save(ctx.Request.Context(), &article.SaveRequest{
 		Article: &article.Article{
 			Id:       req.Id,
 			Title:    req.Title,
@@ -107,7 +107,7 @@ func (hdl *ArticleHandler) Publish(ctx *gin.Context) {
 			AuthorId: claims.UserId,
 		})
 	*/
-	resp, err := hdl.svc.Publish(ctx, &article.PublishRequest{
+	resp, err := hdl.svc.Publish(ctx.Request.Context(), &article.PublishRequest{
 		Article: &article.Article{
 			Id:       req.Id,
 			Title:    req.Title,
@@ -152,7 +152,7 @@ func (hdl *ArticleHandler) Withdraw(ctx *gin.Context) {
 	/*
 		err := hdl.svc.Withdraw(ctx, claims.UserId, req.Id)
 	*/
-	_, err := hdl.svc.Withdraw(ctx, &article.WithdrawRequest{
+	_, err := hdl.svc.Withdraw(ctx.Request.Context(), &article.WithdrawRequest{
 		Uid: claims.UserId,
 		Aid: req.Id,
 	})
@@ -180,7 +180,7 @@ func (hdl *ArticleHandler) Count(ctx *gin.Context) {
 	/*
 		count, err := hdl.svc.Count(ctx, claims.UserId)
 	*/
-	resp, err := hdl.svc.Count(ctx, &article.CountRequest{
+	resp, err := hdl.svc.Count(ctx.Request.Context(), &article.CountRequest{
 		Uid: claims.UserId,
 	})
 	if err != nil {
@@ -214,7 +214,7 @@ func (hdl *ArticleHandler) List(ctx *gin.Context) {
 	/*
 		articleList, err := hdl.svc.List(ctx, claims.UserId, req.Page, req.PageSize)
 	*/
-	resp, err := hdl.svc.List(ctx, &article.ListRequest{
+	resp, err := hdl.svc.List(ctx.Request.Context(), &article.ListRequest{
 		Uid:      claims.UserId,
 		Page:     int32(req.Page),
 		PageSize: int32(req.PageSize),
@@ -246,7 +246,7 @@ func (hdl *ArticleHandler) Detail(ctx *gin.Context) {
 	/*
 		art, err := hdl.svc.Detail(ctx, claims.UserId, aid)
 	*/
-	resp, err := hdl.svc.Detail(ctx, &article.DetailRequest{
+	resp, err := hdl.svc.Detail(ctx.Request.Context(), &article.DetailRequest{
 		Uid: claims.UserId,
 		Aid: aid,
 	})
@@ -273,7 +273,7 @@ func (hdl *ArticleHandler) PubDetail(ctx *gin.Context) {
 	/*
 		art, err := hdl.svc.PubDetail(ctx, aid)
 	*/
-	resp, err := hdl.svc.PubDetail(ctx, &article.PubDetailRequest{Aid: aid})
+	resp, err := hdl.svc.PubDetail(ctx.Request.Context(), &article.PubDetailRequest{Aid: aid})
 	if err != nil {
 		res.FailWithMsg("系统错误", ctx)
 		return
@@ -300,7 +300,7 @@ func (hdl *ArticleHandler) Read(ctx *gin.Context) {
 	/*
 		err := hdl.interSvc.IncrReadCnt(ctx, hdl.biz, aid.(int64))
 	*/
-	_, err := hdl.interSvc.IncrReadCnt(ctx, &interaction.IncrReadCntRequest{
+	_, err := hdl.interSvc.IncrReadCnt(ctx.Request.Context(), &interaction.IncrReadCntRequest{
 		Biz:   hdl.biz,
 		BizId: aid.(int64),
 	})
@@ -329,14 +329,14 @@ func (hdl *ArticleHandler) Like(ctx *gin.Context) {
 	var err error
 	if req.Like {
 		// err = hdl.interSvc.Like(ctx, hdl.biz, req.Id, claims.UserId)
-		_, err = hdl.interSvc.Like(ctx, &interaction.LikeRequest{
+		_, err = hdl.interSvc.Like(ctx.Request.Context(), &interaction.LikeRequest{
 			Biz:   hdl.biz,
 			BizId: req.Id,
 			Uid:   claims.UserId,
 		})
 	} else {
 		// err = hdl.interSvc.CancelLike(ctx, hdl.biz, req.Id, claims.UserId)
-		_, err = hdl.interSvc.CancelLike(ctx, &interaction.CancelLikeRequest{
+		_, err = hdl.interSvc.CancelLike(ctx.Request.Context(), &interaction.CancelLikeRequest{
 			Biz:   hdl.biz,
 			BizId: req.Id,
 			Uid:   claims.UserId,
@@ -368,14 +368,14 @@ func (hdl *ArticleHandler) Collect(ctx *gin.Context) {
 	var err error
 	if req.Collect {
 		// err = hdl.interSvc.Collect(ctx, hdl.biz, req.Id, claims.UserId)
-		_, err = hdl.interSvc.Collect(ctx, &interaction.CollectRequest{
+		_, err = hdl.interSvc.Collect(ctx.Request.Context(), &interaction.CollectRequest{
 			Biz:   hdl.biz,
 			BizId: req.Id,
 			Uid:   claims.UserId,
 		})
 	} else {
 		// err = hdl.interSvc.CancelCollect(ctx, hdl.biz, req.Id, claims.UserId)
-		_, err = hdl.interSvc.CancelCollect(ctx, &interaction.CancelCollectRequest{
+		_, err = hdl.interSvc.CancelCollect(ctx.Request.Context(), &interaction.CancelCollectRequest{
 			Biz:   hdl.biz,
 			BizId: req.Id,
 			Uid:   claims.UserId,
@@ -396,7 +396,7 @@ func (hdl *ArticleHandler) CollectionList(ctx *gin.Context) {
 
 	// 调用下层服务
 	// arts, err := hdl.interSvc.CollectionList(ctx, hdl.biz, claims.UserId)
-	resp, err := hdl.svc.CollectionList(ctx, &article.CollectionListRequest{
+	resp, err := hdl.svc.CollectionList(ctx.Request.Context(), &article.CollectionListRequest{
 		Uid: claims.UserId,
 	})
 	if err != nil {
@@ -421,7 +421,7 @@ func (hdl *ArticleHandler) Interaction(ctx *gin.Context) {
 
 	// 调用下层服务
 	// i, err := hdl.interSvc.Get(ctx, hdl.biz, aid, claims.UserId)
-	resp, err := hdl.interSvc.Get(ctx, &interaction.GetRequest{
+	resp, err := hdl.interSvc.Get(ctx.Request.Context(), &interaction.GetRequest{
 		Biz:   hdl.biz,
 		BizId: aid,
 		Uid:   claims.UserId,
@@ -467,7 +467,7 @@ func (hdl *ArticleHandler) PubList(ctx *gin.Context) {
 	/*
 		list, err := hdl.svc.PubList(ctx, req.Time, req.Limit, req.Offset)
 	*/
-	resp, err := hdl.svc.PubList(ctx, &article.PubListRequest{
+	resp, err := hdl.svc.PubList(ctx.Request.Context(), &article.PubListRequest{
 		Timestamp: timestamppb.New(req.Time),
 		Limit:     int32(req.Limit),
 		Offset:    int32(req.Offset),

@@ -60,3 +60,9 @@ func (b *MetricsMiddlewareBuilder) Build() gin.HandlerFunc {
 		ctx.Next()
 	}
 }
+
+/*
+	其它健康指标：
+	1. 业务错误码的统计与监控（需要反序列化响应体）
+	2. 第三方服务的监控（短信、redis、kafka）
+*/
