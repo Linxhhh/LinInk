@@ -21,7 +21,8 @@ type ArticleDAO interface {
 	GetListByAuthor(ctx context.Context, uid int64, offset, limit int) ([]Article, error)
 	GetById(ctx context.Context, aid int64) (Article, error)
 	GetPubById(ctx context.Context, aid int64) (PublishedArticle, error)
-	GetPubList(ctx context.Context, startTime time.Time, offset, limit int) ([]PublishedArticle, error)
+	GetPubList(ctx context.Context, startTime time.Time, limit int) ([]PublishedArticle, error)
+	GetPubWorks(ctx context.Context, uid int64, limit, offset int) ([]PublishedArticle, error)
 }
 
 type GormArticleDAO struct {
@@ -184,10 +185,18 @@ func (dao *GormArticleDAO) GetPubById(ctx context.Context, aid int64) (Published
 }
 
 // GetPubList 获取首页内容
-func (dao *GormArticleDAO) GetPubList(ctx context.Context, startTime time.Time, offset, limit int) ([]PublishedArticle, error) {
+func (dao *GormArticleDAO) GetPubList(ctx context.Context, startTime time.Time, limit int) ([]PublishedArticle, error) {
 	var res []PublishedArticle
 	err := dao.RandSalve().WithContext(ctx).Order("utime DESC").
-		Where("utime > ?", startTime.UnixMilli()).Limit(limit).Offset(offset).Find(&res).Error
+		Where("utime < ? and status = 1", startTime.UnixMilli()).Limit(limit).Find(&res).Error
+	return res, err
+}
+
+// GetPubWorks 获取主页作品
+func (dao *GormArticleDAO) GetPubWorks(ctx context.Context, uid int64, limit, offset int) ([]PublishedArticle, error) {
+	var res []PublishedArticle
+	err := dao.RandSalve().WithContext(ctx).Order("utime DESC").
+		Where("author_id = ? and status = 1", uid).Limit(limit).Offset(offset).Find(&res).Error
 	return res, err
 }
 

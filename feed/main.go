@@ -5,6 +5,7 @@ import (
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/feed"
+	"github.com/Linxhhh/LinInk/feed/events"
 	server "github.com/Linxhhh/LinInk/feed/grpc"
 	"github.com/Linxhhh/LinInk/feed/ioc"
 	"github.com/Linxhhh/LinInk/feed/repository"
@@ -34,6 +35,15 @@ func main() {
 
 	// init service
 	svc := service.NewFeedEventService(repo, cli)
+
+	// init sarama client
+	saramaCli := ioc.InitSaramaClient()
+
+	// init publish event consumer
+	pubCsmr := events.NewArticlePublishEventConsumer(saramaCli, svc)
+	go func ()  {
+		pubCsmr.Start("article_publish")	
+	}()
 
 	// init service server
 	svr := server.NewFeedServiceServer(svc)

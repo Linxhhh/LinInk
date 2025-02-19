@@ -2,14 +2,22 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
+	"github.com/Linxhhh/LinInk/api/proto/feed"
 	"github.com/Linxhhh/LinInk/api/proto/interaction"
 	"github.com/Linxhhh/LinInk/api/proto/user"
 	"github.com/Linxhhh/LinInk/article/domain"
 	"github.com/Linxhhh/LinInk/article/events"
 	"github.com/Linxhhh/LinInk/article/repository"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 )
 
 var ErrIncorrectArticleorAuthor = repository.ErrIncorrectArticleorAuthor
@@ -18,19 +26,21 @@ type ArticleService struct {
 	repo       repository.ArticleRepository
 	userCli    user.UserServiceClient
 	interCli   interaction.InteractionServiceClient
+	feedCli    feed.FeedServiceClient
 	publishPdr *events.ArticlePublishEventProducer
 	readPdr    *events.ArticleReadEventProducer
 	Biz        string
 }
 
 func NewArticleService(repo repository.ArticleRepository,
-	userCli user.UserServiceClient, interCli interaction.InteractionServiceClient,
+	userCli user.UserServiceClient, interCli interaction.InteractionServiceClient, feedCli feed.FeedServiceClient,
 	publishPdr *events.ArticlePublishEventProducer, readPdr *events.ArticleReadEventProducer) *ArticleService {
 
 	return &ArticleService{
 		repo:       repo,
 		userCli:    userCli,
 		interCli:   interCli,
+		feedCli:    feedCli,
 		publishPdr: publishPdr,
 		readPdr:    readPdr,
 		Biz:        "article",
@@ -38,6 +48,11 @@ func NewArticleService(repo repository.ArticleRepository,
 }
 
 func (as *ArticleService) Save(ctx context.Context, art domain.Article) (int64, error) {
+	// create sub span
+	var tracer = otel.Tracer("LinInk-article-service")
+	_, subSpan := tracer.Start(ctx, "sub-span-articleservice-save", trace.WithAttributes(attribute.String("key1", "value1")))
+	defer subSpan.End()
+
 	art.Status = domain.ArticleStatusUnpublished
 	if art.Id > 0 {
 		return art.Id, as.repo.Update(ctx, art)
@@ -109,8 +124,8 @@ func (as *ArticleService) PubDetail(ctx context.Context, aid int64) (domain.Arti
 	return art, nil
 }
 
-func (as *ArticleService) PubList(ctx context.Context, startTime time.Time, limit, offset int) ([]domain.Article, error) {
-	arts, err := as.repo.GetPubList(ctx, startTime, offset, limit)
+func (as *ArticleService) PubList(ctx context.Context, startTime time.Time, limit int) ([]domain.Article, error) {
+	arts, err := as.repo.GetPubList(ctx, startTime, limit)
 	if err != nil {
 		return []domain.Article{}, err
 	}
@@ -125,19 +140,21 @@ func (as *ArticleService) PubList(ctx context.Context, startTime time.Time, limi
 	return arts, nil
 }
 
-func (as *ArticleService) CollectionList(ctx context.Context, uid int64) ([]domain.Article, error) {
+func (as *ArticleService) CollectionList(ctx context.Context, uid int64, limit, offset int32) ([]domain.Article, error) {
 
 	// 获取 aidList
 	resp, err := as.interCli.CollectionList(ctx, &interaction.CollectionListRequest{
-		Biz: as.Biz,
-		Uid: uid,
+		Biz:    as.Biz,
+		Uid:    uid,
+		Limit:  limit,
+		Offset: offset,
 	})
 	if err != nil {
 		return []domain.Article{}, err
 	}
 
 	// 获取 article List
-	arts, err := as.repo.GetCollectionList(ctx, resp.GetAidList())
+	arts, err := as.repo.GetPubListByIdList(ctx, resp.GetAidList())
 	if err != nil {
 		return []domain.Article{}, err
 	}
@@ -150,4 +167,84 @@ func (as *ArticleService) CollectionList(ctx context.Context, uid int64) ([]doma
 		arts[i].AuthorName = user.GetUser().GetNickname()
 	}
 	return arts, nil
+}
+
+func (as *ArticleService) PubWorks(ctx context.Context, uid int64, limit, offset int) ([]domain.Article, error) {
+	arts, err := as.repo.GetPubWorks(ctx, uid, limit, offset)
+	if err != nil {
+		return []domain.Article{}, err
+	}
+	for i := range arts {
+		// 获取 AuthorName
+		user, err := as.userCli.Profile(ctx, &user.ProfileRequest{Uid: arts[i].AuthorId})
+		if err != nil {
+			return []domain.Article{}, errors.New("查找用户失败")
+		}
+		arts[i].AuthorName = user.GetUser().GetNickname()
+	}
+	return arts, nil
+}
+
+func (as *ArticleService) FeedList(ctx context.Context, uid int64, pushEvtTimestamp, pullEvtTimestamp time.Time, limit int64) ([]domain.Article, []domain.Article, error) {
+
+	// 获取 Feed Event
+	resp, err := as.feedCli.GetList(ctx, &feed.GetListRequest{
+		Uid:              uid,
+		PushEvtTimestamp: timestamppb.New(pushEvtTimestamp),
+		PullEvtTimestamp: timestamppb.New(pullEvtTimestamp),
+		Limit:            limit,
+	})
+	if err != nil {
+		return []domain.Article{}, []domain.Article{}, err
+	}
+
+	pullEvtList := resp.GetPullEvtList()
+	artPullList := make([]domain.Article, 0, len(pullEvtList))
+	for _, evt := range pullEvtList {
+		art, err := as.repo.GetPubById(ctx, getAidFromEvt(evt))
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return []domain.Article{}, []domain.Article{}, err
+		}
+
+		// 获取 AuthorName
+		user, err := as.userCli.Profile(ctx, &user.ProfileRequest{Uid: art.AuthorId})
+		if err != nil {
+			return []domain.Article{}, []domain.Article{}, errors.New("查找用户失败")
+		}
+		art.AuthorName = user.GetUser().GetNickname()
+		artPullList = append(artPullList, art)
+	}
+
+	pushEvtList := resp.GetPushEvtList()
+	artPushList := make([]domain.Article, 0, len(pushEvtList))
+	for _, evt := range pushEvtList {
+		art, err := as.repo.GetPubById(ctx, getAidFromEvt(evt))
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				continue
+			}
+			return []domain.Article{}, []domain.Article{}, err
+		}
+
+		// 获取 AuthorName
+		user, err := as.userCli.Profile(ctx, &user.ProfileRequest{Uid: art.AuthorId})
+		if err != nil {
+			return []domain.Article{}, []domain.Article{}, errors.New("查找用户失败")
+		}
+		art.AuthorName = user.GetUser().GetNickname()
+		artPushList = append(artPushList, art)
+	}
+
+	return artPullList, artPushList, nil
+}
+
+func getAidFromEvt(evt *feed.FeedEvent) int64 {
+	ext := map[string]string{}
+	_ = json.Unmarshal([]byte(evt.GetExt()), &ext)
+	aidStr, _ := ext["aid"]
+	aid, _ := strconv.ParseInt(aidStr, 10, 64)
+	return aid
 }

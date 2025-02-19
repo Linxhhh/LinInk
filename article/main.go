@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
+	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	pb "github.com/Linxhhh/LinInk/api/proto/article"
 	"github.com/Linxhhh/LinInk/article/events"
 	server "github.com/Linxhhh/LinInk/article/grpc"
@@ -16,6 +19,7 @@ import (
 )
 
 func main() {
+	closeFunc := ioc.InitOtel()
 
 	// init article repository
 	cmd := ioc.InitCache()
@@ -42,24 +46,22 @@ func main() {
 	publishPdr := events.NewArticlePublishEventProducer(pdr)
 	readPdr := events.NewArticleReadEventProducer(pdr)
 
-	// init publish and read event consumer
-	publishCsmr := events.NewArticlePublishEventConsumer(cli, feedCli)
-	go func ()  {
-		publishCsmr.Start("article_publish")
-	}()
+	// init read event consumer
 	readCsmr := events.NewArticleReadEventConsumer(cli, interCli)
 	go func ()  {
 		readCsmr.StartBatch("article_read")	
 	}()
 
 	// init article service
-	svc := service.NewArticleService(repo, userCli, interCli, publishPdr, readPdr)
+	svc := service.NewArticleService(repo, userCli, interCli, feedCli, publishPdr, readPdr)
 
 	// init article service server
 	svr := server.NewArticleServiceServer(svc)
 
 	// create grpc server and register article service server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+	)
 	pb.RegisterArticleServiceServer(grpcServer, svr)
 
 	// Listen port
@@ -77,4 +79,8 @@ func main() {
 	if err = grpcServer.Serve(listener); err != nil {
 		log.Fatal(err)
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	closeFunc(ctx)
 }

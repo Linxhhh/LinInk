@@ -17,12 +17,12 @@ type Article struct {
 
 // 帖子列表
 type ArticleListElem struct {
-	Id       int64         `json:"id"`
-	Title    string        `json:"title"`
-	Abstract string        `json:"abstract"`
-	Status   ArticleStatus `json:"status"`
-	Ctime    time.Time     `json:"ctime"`
-	Utime    time.Time     `json:"utime"`
+	Id      int64         `json:"id"`
+	Title   string        `json:"title"`
+	Content string        `json:"content"`
+	Status  ArticleStatus `json:"status"`
+	Ctime   time.Time     `json:"ctime"`
+	Utime   time.Time     `json:"utime"`
 }
 
 // 帖子状态
@@ -33,12 +33,3 @@ const (
 	ArticleStatusPublished          // 已发表
 	ArticleStatusPrivate            // 私有
 )
-
-// 获取文章内容摘要
-func Abstract(content string) string {
-	str := []rune(content)
-	if len(str) > 128 {
-		str = str[:128]
-	}
-	return string(str)
-}

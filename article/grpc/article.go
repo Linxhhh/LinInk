@@ -60,7 +60,7 @@ func (server *ArticleServiceServer) PubDetail(ctx context.Context, req *pb.PubDe
 }
 
 func (server *ArticleServiceServer) PubList(ctx context.Context, req *pb.PubListRequest) (*pb.PubListResponse, error) {
-	list, err := server.svc.PubList(ctx, req.GetTimestamp().AsTime(), int(req.GetLimit()), int(req.GetOffset()))
+	list, err := server.svc.PubList(ctx, req.GetTimestamp().AsTime(), int(req.GetLimit()))
 	listResp := []*pb.Article{}
 	for _, elem := range list {
 		listResp = append(listResp, convertToPb(elem))
@@ -69,12 +69,36 @@ func (server *ArticleServiceServer) PubList(ctx context.Context, req *pb.PubList
 }
 
 func (server *ArticleServiceServer) CollectionList(ctx context.Context, req *pb.CollectionListRequest) (*pb.CollectionListResponse, error) {
-	list, err := server.svc.CollectionList(ctx, req.GetUid())
+	list, err := server.svc.CollectionList(ctx, req.GetUid(), req.GetLimit(), req.GetOffset())
 	listResp := []*pb.Article{}
 	for _, elem := range list {
 		listResp = append(listResp, convertToPb(elem))
 	}
 	return &pb.CollectionListResponse{List: listResp}, err
+}
+
+func (server *ArticleServiceServer) PubWorks(ctx context.Context, req *pb.PubWorksRequest) (*pb.PubWorksResponse, error) {
+	list, err := server.svc.PubWorks(ctx, req.GetUid(), int(req.GetLimit()), int(req.GetOffset()))
+	listResp := []*pb.Article{}
+	for _, elem := range list {
+		listResp = append(listResp, convertToPb(elem))
+	}
+	return &pb.PubWorksResponse{List: listResp}, err
+}
+
+func (server *ArticleServiceServer) FeedList(ctx context.Context, req *pb.FeedListRequest) (*pb.FeedListResponse, error) {
+	pullEvts, pushEvts, err := server.svc.FeedList(ctx, req.GetUid(), req.GetPushEvtTimestamp().AsTime(), req.GetPullEvtTimestamp().AsTime(), req.GetLimit())
+	if err != nil {
+		return &pb.FeedListResponse{}, err
+	}
+	var pullEvtlist, pushEvtlist []*pb.Article
+	for _, evt := range pullEvts {
+		pullEvtlist = append(pullEvtlist, convertToPb(evt))
+	}
+	for _, evt := range pushEvts {
+		pushEvtlist = append(pushEvtlist, convertToPb(evt))
+	}
+	return &pb.FeedListResponse{PullEvtList: pullEvtlist, PushEvtList: pushEvtlist}, err
 }
 
 // 类型转换：pb.Article -> domain.Article
@@ -107,12 +131,12 @@ func convertToPb(a domain.Article) *pb.Article {
 // 类型转换：pb.ArticleListElem -> domain.ArticleListElem
 func convertToPbList(a domain.ArticleListElem) *pb.ArticleListElem {
 	articleListElem := &pb.ArticleListElem{
-		Id:       a.Id,
-		Title:    a.Title,
-		Abstract: a.Abstract,
-		Status:   uint32(a.Status),
-		Ctime:    timestamppb.New(a.Ctime),
-		Utime:    timestamppb.New(a.Utime),
+		Id:      a.Id,
+		Title:   a.Title,
+		Content: a.Content,
+		Status:  uint32(a.Status),
+		Ctime:   timestamppb.New(a.Ctime),
+		Utime:   timestamppb.New(a.Utime),
 	}
 	return articleListElem
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/Linxhhh/LinInk/pkg/callbacks"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	// "gorm.io/plugin/opentelemetry/tracing"
 	"gorm.io/plugin/prometheus"
 )
 
@@ -39,6 +40,13 @@ func InitDB() (master *gorm.DB, slaves []*gorm.DB) {
 		panic(err)
 	}
 
+	/*
+	err = otelTracing(master, s1)
+	if err != nil {
+		panic(err)
+	}
+	*/
+
 	return
 }
 
@@ -51,9 +59,7 @@ func initPrometheus(dbs ...*gorm.DB) error {
 			RefreshInterval: 15,    // 15s 采集一次
 			StartServer:     false, // 不用通过 http 服务来采集
 			MetricsCollector: []prometheus.MetricsCollector{
-				&prometheus.MySQL{
-					VariableNames: []string{"thread_running"},
-				},
+				&prometheus.MySQL{},
 			},
 		}))
 		return err
@@ -137,3 +143,18 @@ func metricsSpendTime(dbs ...*gorm.DB) error {
 	}
 	return nil
 }
+
+/*
+// otelTracing 使用 otel 追踪数据库操作
+func otelTracing(dbs ...*gorm.DB) error {
+	for _, db := range dbs {
+		err := db.Use(tracing.NewPlugin(
+			tracing.WithDBName("webook"),
+			tracing.WithoutMetrics(),        // 这里不用 metrics
+			tracing.WithoutQueryVariables(), // 不要记录查询参数
+		))
+		return err
+	}
+	return nil
+}
+*/

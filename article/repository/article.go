@@ -22,8 +22,9 @@ type ArticleRepository interface {
 	GetListByAuthor(ctx context.Context, uid int64, offset, limit int) ([]domain.ArticleListElem, error)
 	GetById(ctx context.Context, aid int64) (domain.Article, error)
 	GetPubById(ctx context.Context, aid int64) (domain.Article, error)
-	GetPubList(ctx context.Context, startTime time.Time, limit, offset int) ([]domain.Article, error)
-	GetCollectionList(ctx context.Context, aidList []int64) ([]domain.Article, error)
+	GetPubList(ctx context.Context, startTime time.Time, limit int) ([]domain.Article, error)
+	GetPubListByIdList(ctx context.Context, aidList []int64) ([]domain.Article, error)
+	GetPubWorks(ctx context.Context, uid int64, limit, offset int) ([]domain.Article, error)
 }
 
 type CacheArticleRepository struct {
@@ -125,12 +126,12 @@ func (repo *CacheArticleRepository) GetListByAuthor(ctx context.Context, uid int
 	var articleList []domain.ArticleListElem
 	for _, art := range arts {
 		article := domain.ArticleListElem{
-			Id:       art.Id,
-			Title:    art.Title,
-			Abstract: domain.Abstract(art.Content),
-			Ctime:    time.UnixMilli(art.Ctime),
-			Utime:    time.UnixMilli(art.Utime),
-			Status:   domain.ArticleStatus(art.Status),
+			Id:      art.Id,
+			Title:   art.Title,
+			Content: art.Content,
+			Ctime:   time.UnixMilli(art.Ctime),
+			Utime:   time.UnixMilli(art.Utime),
+			Status:  domain.ArticleStatus(art.Status),
 		}
 		articleList = append(articleList, article)
 	}
@@ -223,8 +224,8 @@ func (repo *CacheArticleRepository) GetPubById(ctx context.Context, aid int64) (
 	return article, err
 }
 
-func (repo *CacheArticleRepository) GetPubList(ctx context.Context, startTime time.Time, limit, offset int) ([]domain.Article, error) {
-	pubList, err := repo.dao.GetPubList(ctx, startTime, limit, offset)
+func (repo *CacheArticleRepository) GetPubList(ctx context.Context, startTime time.Time, limit int) ([]domain.Article, error) {
+	pubList, err := repo.dao.GetPubList(ctx, startTime, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +244,7 @@ func (repo *CacheArticleRepository) GetPubList(ctx context.Context, startTime ti
 	return artList, err
 }
 
-func (repo *CacheArticleRepository) GetCollectionList(ctx context.Context, aidList []int64) ([]domain.Article, error) {
+func (repo *CacheArticleRepository) GetPubListByIdList(ctx context.Context, aidList []int64) ([]domain.Article, error) {
 	var list []domain.Article
 	for _, aid := range aidList {
 		art, err := repo.GetPubById(ctx, aid)
@@ -256,4 +257,24 @@ func (repo *CacheArticleRepository) GetCollectionList(ctx context.Context, aidLi
 		list = append(list, art)
 	}
 	return list, nil
+}
+
+func (repo *CacheArticleRepository) GetPubWorks(ctx context.Context, uid int64, limit, offset int) ([]domain.Article, error) {
+	pubList, err := repo.dao.GetPubWorks(ctx, uid, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	var artList []domain.Article
+	for _, elem := range pubList {
+		artList = append(artList, domain.Article{
+			Id:       elem.Id,
+			Title:    elem.Title,
+			Content:  elem.Content,
+			AuthorId: elem.AuthorId,
+			Ctime:    time.UnixMilli(elem.Ctime),
+			Utime:    time.UnixMilli(elem.Utime),
+			Status:   domain.ArticleStatus(elem.Status),
+		})
+	}
+	return artList, err
 }
