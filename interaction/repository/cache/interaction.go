@@ -17,6 +17,7 @@ var luaIncrCnt string
 const (
 	fieldReadCnt    = "read_cnt"
 	fieldLikeCnt    = "like_cnt"
+	fieldShareCnt   = "share_cnt"
 	fieldCollectCnt = "collect_cnt"
 	
 	ErrKeyNotExist  = redis.Nil
@@ -26,6 +27,9 @@ type InteractionCache interface {
 	IncrReadCnt(ctx context.Context, biz string, bizId int64) error
 	IncrLikeCnt(ctx context.Context, biz string, bizId int64) error
 	DecrLikeCnt(ctx context.Context, biz string, bizId int64) error
+	IncrCollectCnt(ctx context.Context, biz string, bizId int64) error
+	DecrCollectCnt(ctx context.Context, biz string, bizId int64) error
+	IncrShareCnt(ctx context.Context, biz string, bizId int64) error
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interaction, error)
 	Set(ctx context.Context, biz string, bizId int64, interaction domain.Interaction) error
 }
@@ -61,6 +65,21 @@ func (i *RedisInteractionCache) DecrLikeCnt(ctx context.Context, biz string, biz
 	return i.cmd.Eval(luaIncrCnt, []string{key}, fieldLikeCnt, -1).Err()
 }
 
+func (i *RedisInteractionCache) IncrCollectCnt(ctx context.Context, biz string, bizId int64) error {
+	key := i.key(biz, bizId)
+	return i.cmd.Eval(luaIncrCnt, []string{key}, fieldCollectCnt, 1).Err()
+}
+
+func (i *RedisInteractionCache) DecrCollectCnt(ctx context.Context, biz string, bizId int64) error {
+	key := i.key(biz, bizId)
+	return i.cmd.Eval(luaIncrCnt, []string{key}, fieldCollectCnt, -1).Err()
+}
+
+func (i *RedisInteractionCache) IncrShareCnt(ctx context.Context, biz string, bizId int64) error {
+	key := i.key(biz, bizId)
+	return i.cmd.Eval(luaIncrCnt, []string{key}, fieldShareCnt, 1).Err()
+}
+
 func (i *RedisInteractionCache) Get(ctx context.Context, biz string, bizId int64) (domain.Interaction, error) {
 	key := i.key(biz, bizId)
 	res, err := i.cmd.HGetAll(key).Result()
@@ -75,6 +94,7 @@ func (i *RedisInteractionCache) Get(ctx context.Context, biz string, bizId int64
 	ia.ReadCnt, _ = strconv.ParseInt(res[fieldReadCnt], 10, 64)
 	ia.LikeCnt, _ = strconv.ParseInt(res[fieldLikeCnt], 10, 64)
 	ia.CollectCnt, _ = strconv.ParseInt(res[fieldCollectCnt], 10, 64)
+	ia.ShareCnt, _ = strconv.ParseInt(res[fieldShareCnt], 10, 64)
 	return ia, nil
 }
 
@@ -89,6 +109,9 @@ func (i *RedisInteractionCache) Set(ctx context.Context, biz string, bizId int64
 		return err
 	}
 	if err := i.cmd.HSet(key, fieldCollectCnt, ia.CollectCnt).Err(); err != nil {
+		return err
+	}
+	if err := i.cmd.HSet(key, fieldShareCnt, ia.ShareCnt).Err(); err != nil {
 		return err
 	}
 	return i.cmd.Expire(key, i.expiresAt).Err()

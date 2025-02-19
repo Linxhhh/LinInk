@@ -45,8 +45,12 @@ func (svc *InteractionService) CancelCollect(ctx context.Context, biz string, bi
 /*
 后续优化：分页查询
 */
-func (svc *InteractionService) CollectionList(ctx context.Context, biz string, uid int64) ([]int64, error) {
-	return svc.repo.GetCollectionList(ctx, biz, uid)
+func (svc *InteractionService) CollectionList(ctx context.Context, biz string, uid int64, limit, offset int) ([]int64, error) {
+	return svc.repo.GetCollectionList(ctx, biz, uid, limit, offset)
+}
+
+func (svc *InteractionService) Share(ctx context.Context, biz string, bizId int64) error {
+	return svc.repo.Share(ctx, biz, bizId)
 }
 
 func (svc *InteractionService) Get(ctx context.Context, biz string, bizId int64, uid int64) (domain.Interaction, error) {
@@ -60,25 +64,34 @@ func (svc *InteractionService) Get(ctx context.Context, biz string, bizId int64,
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// 创建一个 error channel
-	errCh := make(chan error, 2)
-
 	// 是否已经点赞
 	go func() {
 		defer wg.Done()
-		i.IsLiked, err = svc.repo.GetLike(ctx, biz, bizId, uid)
-		println(err)
+		i.IsLiked, _ = svc.repo.GetLike(ctx, biz, bizId, uid)
 	}()
 
 	// 是否已经收藏
 	go func() {
 		defer wg.Done()
-		i.IsCollected, err = svc.repo.GetCollection(ctx, biz, bizId, uid)
-		println(err)
+		i.IsCollected, _ = svc.repo.GetCollection(ctx, biz, bizId, uid)
 	}()
 
 	wg.Wait()
-	close(errCh)
 
 	return i, err
+}
+
+func (svc *InteractionService) BatchGet(ctx context.Context, biz string, bizIds []int64) (intrs []domain.Interaction, err error) {
+
+	intrs = make([]domain.Interaction, len(bizIds))
+
+	for i := 0; i < len(bizIds); i++ {
+		intr, err := svc.repo.Get(ctx, biz, bizIds[i]); 
+		if err != nil {
+			return nil, err
+		}
+		intrs[i] = intr
+	}
+
+	return
 }

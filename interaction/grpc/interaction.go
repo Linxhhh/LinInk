@@ -50,13 +50,27 @@ func (server *InteractionServiceServer) CancelCollect(ctx context.Context, req *
 }
 
 func (server *InteractionServiceServer) CollectionList(ctx context.Context, req *pb.CollectionListRequest) (*pb.CollectionListResponse, error) {
-	list, err := server.svc.CollectionList(ctx, req.GetBiz(), req.GetUid())
+	list, err := server.svc.CollectionList(ctx, req.GetBiz(), req.GetUid(), int(req.GetLimit()), int(req.GetOffset()))
 	return &pb.CollectionListResponse{AidList: list}, err
+}
+
+func (server *InteractionServiceServer) Share(ctx context.Context, req *pb.ShareRequest) (*pb.ShareResponse, error) {
+	err := server.svc.Share(ctx, req.GetBiz(), req.GetBizId())
+	return &pb.ShareResponse{}, err
 }
 
 func (server *InteractionServiceServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	interaction, err := server.svc.Get(ctx, req.GetBiz(), req.GetBizId(), req.GetUid())
 	return &pb.GetResponse{Interaction: convertToPb(interaction)}, err
+}
+
+func (server *InteractionServiceServer) BatchGet(ctx context.Context, req *pb.BatchGetRequest) (*pb.BatchGetResponse, error) {
+	resp, err := server.svc.BatchGet(ctx, req.GetBiz(), req.GetBizIds())
+	var interactions []*pb.Interaction
+	for i := 0; i < len(resp); i++ {
+		interactions = append(interactions, convertToPb(resp[i]))
+	}
+	return &pb.BatchGetResponse{Interactions: interactions}, err
 }
 
 // 类型转换：domain.Interaction -> pb.Interaction
@@ -68,6 +82,7 @@ func convertToPb(i domain.Interaction) *pb.Interaction {
 		ReadCnt:     i.ReadCnt,
 		LikeCnt:     i.LikeCnt,
 		CollectCnt:  i.CollectCnt,
+		ShareCnt:    i.ShareCnt,
 		IsLiked:     i.IsLiked,
 		IsCollected: i.IsCollected,
 	}

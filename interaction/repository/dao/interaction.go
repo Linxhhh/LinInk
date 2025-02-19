@@ -25,9 +25,12 @@ type InteractionDAO interface {
 
 	// 收藏模块
 	GetCollection(ctx context.Context, biz string, id int64, uid int64) (UserCollection, error)
-	GetCollectionList(ctx context.Context, biz string, uid int64) ([]UserCollection, error)
+	GetCollectionList(ctx context.Context, biz string, uid int64, limit, offset int) ([]UserCollection, error)
 	InsertCollection(ctx context.Context, biz string, id int64, uid int64) error
 	DeleteCollection(ctx context.Context, biz string, id int64, uid int64) error
+
+	// 转发模块
+	IncrShareCnt(ctx context.Context, biz string, bizId int64) error
 }
 
 type GORMInteractionDAO struct {
@@ -44,8 +47,8 @@ func NewInteractionDAO(m *gorm.DB, s []*gorm.DB) InteractionDAO {
 
 func (dao *GORMInteractionDAO) RandSalve() *gorm.DB {
 	rand.Seed(time.Now().UnixNano())
-    randomSlave := dao.slaves[rand.Intn(len(dao.slaves))]
-    return randomSlave
+	randomSlave := dao.slaves[rand.Intn(len(dao.slaves))]
+	return randomSlave
 }
 
 // Get 获取（阅读、点赞、收藏）的数据
@@ -98,7 +101,7 @@ func (dao *GORMInteractionDAO) GetLike(ctx context.Context, biz string, id int64
 }
 
 // InsertLike 插入点赞记录
-func (dao *GORMInteractionDAO) InsertLike(ctx context.Context, biz string, id int64, uid int64) error {
+func (dao *GORMInteractionDAO) InsertLike(ctx context.Context, biz string, bizId int64, uid int64) error {
 	now := time.Now().UnixMilli()
 
 	// 开启事务
@@ -113,7 +116,7 @@ func (dao *GORMInteractionDAO) InsertLike(ctx context.Context, biz string, id in
 		}).Create(&UserLike{
 			Uid:    uid,
 			Biz:    biz,
-			BizId:  id,
+			BizId:  bizId,
 			Status: 1,
 			Utime:  now,
 			Ctime:  now,
@@ -130,7 +133,7 @@ func (dao *GORMInteractionDAO) InsertLike(ctx context.Context, biz string, id in
 			}),
 		}).Create(&Interaction{
 			Biz:     biz,
-			BizId:   id,
+			BizId:   bizId,
 			LikeCnt: 1,
 			Ctime:   now,
 			Utime:   now,
@@ -139,7 +142,7 @@ func (dao *GORMInteractionDAO) InsertLike(ctx context.Context, biz string, id in
 }
 
 // DeleteLike 删除点赞记录（软删除）
-func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, id int64, uid int64) error {
+func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, bizId int64, uid int64) error {
 	now := time.Now().UnixMilli()
 
 	// 开启事务
@@ -147,7 +150,7 @@ func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, id in
 
 		// 软删除用户点赞记录
 		err := tx.Model(&UserLike{}).
-			Where("biz_id = ? AND biz=? AND uid=?", id, biz, uid).
+			Where("biz_id = ? AND biz=? AND uid=?", bizId, biz, uid).
 			Updates(map[string]interface{}{
 				"utime":  now,
 				"status": 0,
@@ -158,7 +161,7 @@ func (dao *GORMInteractionDAO) DeleteLike(ctx context.Context, biz string, id in
 
 		// 点赞量 -1
 		return tx.Model(&Interaction{}).
-			Where("biz_id=? AND biz =?", id, biz).
+			Where("biz_id=? AND biz =?", bizId, biz).
 			Updates(map[string]interface{}{
 				"like_cnt": gorm.Expr("`like_cnt` - 1"),
 				"utime":    now,
@@ -174,29 +177,34 @@ func (dao *GORMInteractionDAO) GetCollection(ctx context.Context, biz string, bi
 }
 
 // GetCollectionList 获取收藏列表
-func (dao *GORMInteractionDAO) GetCollectionList(ctx context.Context, biz string, uid int64) ([]UserCollection, error) {
+func (dao *GORMInteractionDAO) GetCollectionList(ctx context.Context, biz string, uid int64, limit, offset int) ([]UserCollection, error) {
 	var res []UserCollection
-	err := dao.RandSalve().WithContext(ctx).Where("biz = ? AND uid = ? AND status = 1", biz, uid).Find(&res).Error
+	err := dao.RandSalve().WithContext(ctx).Order("utime DESC").
+		Where("biz = ? AND uid = ? AND status = 1", biz, uid).Limit(limit).Offset(offset).Find(&res).Error
 	return res, err
 }
 
 // InsertCollection 插入收藏记录
 func (dao *GORMInteractionDAO) InsertCollection(ctx context.Context, biz string, bizId int64, uid int64) error {
 	now := time.Now().UnixMilli()
-	c := UserCollection{
-		Biz:    biz,
-		BizId:  bizId,
-		Uid:    uid,
-		Status: 1,
-		Ctime:  now,
-		Utime:  now,
-	}
 
 	// 开启事务
 	return dao.master.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 
-		// 创建记录
-		err := tx.Create(&c).Error
+		// 创建收藏记录（upsert 语义）
+		err := tx.Clauses(clause.OnConflict{
+			DoUpdates: clause.Assignments(map[string]interface{}{
+				"utime":  now,
+				"status": 1,
+			}),
+		}).Create(&UserCollection{
+			Uid:    uid,
+			Biz:    biz,
+			BizId:  bizId,
+			Status: 1,
+			Utime:  now,
+			Ctime:  now,
+		}).Error
 		if err != nil {
 			return err
 		}
@@ -208,8 +216,8 @@ func (dao *GORMInteractionDAO) InsertCollection(ctx context.Context, biz string,
 				"utime":       now,
 			}),
 		}).Create(&Interaction{
-			Biz:        c.Biz,
-			BizId:      c.BizId,
+			Biz:        biz,
+			BizId:      bizId,
 			CollectCnt: 1,
 			Ctime:      now,
 			Utime:      now,
@@ -245,12 +253,31 @@ func (dao *GORMInteractionDAO) DeleteCollection(ctx context.Context, biz string,
 	})
 }
 
-type UserLike struct {
-	Id     int64  `gorm:"primaryKey,autoIncrement"`
+// IncrShareCnt 增加转发量
+func (dao *GORMInteractionDAO) IncrShareCnt(ctx context.Context, biz string, bizId int64) error {
+	now := time.Now().UnixMilli()
 
-	BizId  int64  `gorm:"uniqueIndex:uid_biz_type_id"`
-	Biz    string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
-	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	// upsert 语义
+	return dao.master.WithContext(ctx).Clauses(clause.OnConflict{
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"share_cnt": gorm.Expr("`share_cnt` + 1"),
+			"utime":     now,
+		}),
+	}).Create(&Interaction{
+		Biz:      biz,
+		BizId:    bizId,
+		ShareCnt: 1,
+		Ctime:    now,
+		Utime:    now,
+	}).Error
+}
+
+type UserLike struct {
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+
+	BizId int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 
 	Status int
 	Utime  int64
@@ -258,11 +285,11 @@ type UserLike struct {
 }
 
 type UserCollection struct {
-	Id     int64  `gorm:"primaryKey,autoIncrement"`
-	
-	BizId  int64  `gorm:"uniqueIndex:uid_biz_type_id"`
-	Biz    string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
-	Uid    int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	Id int64 `gorm:"primaryKey,autoIncrement"`
+
+	BizId int64  `gorm:"uniqueIndex:uid_biz_type_id"`
+	Biz   string `gorm:"type:varchar(128);uniqueIndex:uid_biz_type_id"`
+	Uid   int64  `gorm:"uniqueIndex:uid_biz_type_id"`
 
 	Status int
 	Utime  int64
@@ -278,6 +305,7 @@ type Interaction struct {
 
 	ReadCnt    int64
 	LikeCnt    int64
+	ShareCnt   int64
 	CollectCnt int64
 	Utime      int64
 	Ctime      int64

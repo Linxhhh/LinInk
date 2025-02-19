@@ -15,10 +15,11 @@ type InteractionRepository interface {
 	CancelLike(ctx context.Context, biz string, bizId int64, uid int64) error
 	Collect(ctx context.Context, biz string, bizId int64, uid int64) error
 	CancelCollect(ctx context.Context, biz string, bizId int64, uid int64) error
+	Share(ctx context.Context, biz string, bizId int64) error
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interaction, error)
 	GetLike(ctx context.Context, biz string, bizId int64, uid int64) (bool, error)
 	GetCollection(ctx context.Context, biz string, bizId int64, uid int64) (bool, error)
-	GetCollectionList(ctx context.Context, biz string, uid int64) ([]int64, error)
+	GetCollectionList(ctx context.Context, biz string, uid int64, limit, offset int) ([]int64, error)
 }
 
 type CacheInteractionRepository struct {
@@ -78,16 +79,24 @@ func (repo *CacheInteractionRepository) CancelLike(ctx context.Context, biz stri
 // -------------------------------------------------------------------------------------------------------------------------
 
 func (repo *CacheInteractionRepository) Collect(ctx context.Context, biz string, bizId int64, uid int64) error {
-	return repo.dao.InsertCollection(ctx, biz, bizId, uid)
+	err := repo.dao.InsertCollection(ctx, biz, bizId, uid)
+	if err != nil {
+		return err
+	}
+	return repo.cache.IncrCollectCnt(ctx, biz, bizId)
 }
 
 func (repo *CacheInteractionRepository) CancelCollect(ctx context.Context, biz string, bizId int64, uid int64) error {
-	return repo.dao.DeleteCollection(ctx, biz, bizId, uid)
+	err := repo.dao.DeleteCollection(ctx, biz, bizId, uid)
+	if err != nil {
+		return err
+	}
+	return repo.cache.DecrCollectCnt(ctx, biz, bizId)
 }
 
-func (repo *CacheInteractionRepository) GetCollectionList(ctx context.Context, biz string, uid int64) ([]int64, error) {
-	
-	collectionList, err := repo.dao.GetCollectionList(ctx, biz, uid)
+func (repo *CacheInteractionRepository) GetCollectionList(ctx context.Context, biz string, uid int64, limit, offset int) ([]int64, error) {
+
+	collectionList, err := repo.dao.GetCollectionList(ctx, biz, uid, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +106,16 @@ func (repo *CacheInteractionRepository) GetCollectionList(ctx context.Context, b
 		aids = append(aids, c.BizId)
 	}
 	return aids, err
+}
+
+// -------------------------------------------------------------------------------------------------------------------------
+
+func (repo *CacheInteractionRepository) Share(ctx context.Context, biz string, bizId int64) error {
+	err := repo.dao.IncrShareCnt(ctx, biz, bizId)
+	if err != nil {
+		return err
+	}
+	return repo.cache.IncrShareCnt(ctx, biz, bizId)
 }
 
 // -------------------------------------------------------------------------------------------------------------------------
@@ -119,6 +138,7 @@ func (repo *CacheInteractionRepository) Get(ctx context.Context, biz string, biz
 		ReadCnt:    interaction.ReadCnt,
 		LikeCnt:    interaction.LikeCnt,
 		CollectCnt: interaction.CollectCnt,
+		ShareCnt:   interaction.ShareCnt,
 	}
 
 	// 回写缓存

@@ -8,6 +8,7 @@ type Interaction struct {
 	ReadCnt     int64  `json:"readCnt"`
 	LikeCnt     int64  `json:"likeCnt"`
 	CollectCnt  int64  `json:"collectCnt"`
+	ShareCnt    int64  `json:"shareCnt"`
 
 	// 上面数据是一篇帖子的公共数据
 	// 下面数据是针对具体用户的数据
