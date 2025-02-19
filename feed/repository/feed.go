@@ -16,13 +16,13 @@ var FolloweesNotFound = cache.FolloweesNotFound
 type FeedRepository interface {
 	// 推事件
 	CreatePushEvents(ctx context.Context, events []domain.FeedEvent) error
-	FindPushEvents(ctx context.Context, uid, timestamp, limit int64) ([]domain.FeedEvent, error)
-	FindPushEventsWithTyp(ctx context.Context, typ string, uid, timestamp, limit int64) ([]domain.FeedEvent, error)
+	FindPushEvents(ctx context.Context, uid int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error)
+	FindPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error)
 
 	// 拉事件
 	CreatePullEvent(ctx context.Context, event domain.FeedEvent) error
-	FindPullEvents(ctx context.Context, uids []int64, timestamp, limit int64) ([]domain.FeedEvent, error)
-	FindPullEventsWithTyp(ctx context.Context, typ string, uids []int64, timestamp, limit int64) ([]domain.FeedEvent, error)
+	FindPullEvents(ctx context.Context, uids []int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error)
+	FindPullEventsWithTyp(ctx context.Context, typ string, uids []int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error)
 }
 
 type feedEventRepo struct {
@@ -49,7 +49,7 @@ func (f *feedEventRepo) CreatePushEvents(ctx context.Context, events []domain.Fe
 	return f.pushDao.CreatePushEvents(ctx, pushEvents)
 }
 
-func (f *feedEventRepo) FindPushEvents(ctx context.Context, uid, timestamp, limit int64) ([]domain.FeedEvent, error) {
+func (f *feedEventRepo) FindPushEvents(ctx context.Context, uid int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error) {
 	events, err := f.pushDao.GetPushEvents(ctx, uid, timestamp, limit)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (f *feedEventRepo) FindPushEvents(ctx context.Context, uid, timestamp, limi
 	return ans, nil
 }
 
-func (f *feedEventRepo) FindPushEventsWithTyp(ctx context.Context, typ string, uid, timestamp, limit int64) ([]domain.FeedEvent, error) {
+func (f *feedEventRepo) FindPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error) {
 	events, err := f.pushDao.GetPushEventsWithTyp(ctx, typ, uid, timestamp, limit)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (f *feedEventRepo) CreatePullEvent(ctx context.Context, event domain.FeedEv
 	return f.pullDao.CreatePullEvent(ctx, convertToPullEventDao(event))
 }
 
-func (f *feedEventRepo) FindPullEvents(ctx context.Context, uids []int64, timestamp, limit int64) ([]domain.FeedEvent, error) {
+func (f *feedEventRepo) FindPullEvents(ctx context.Context, uids []int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error) {
 	events, err := f.pullDao.FindPullEvents(ctx, uids, timestamp, limit)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (f *feedEventRepo) FindPullEvents(ctx context.Context, uids []int64, timest
 	return ans, nil
 }
 
-func (f *feedEventRepo) FindPullEventsWithTyp(ctx context.Context, typ string, uids []int64, timestamp, limit int64) ([]domain.FeedEvent, error) {
+func (f *feedEventRepo) FindPullEventsWithTyp(ctx context.Context, typ string, uids []int64, timestamp time.Time, limit int64) ([]domain.FeedEvent, error) {
 	events, err := f.pullDao.FindPullEventListWithTyp(ctx, typ, uids, timestamp, limit)
 	if err != nil {
 		return nil, err

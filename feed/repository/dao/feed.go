@@ -12,8 +12,8 @@ import (
 
 type FeedPullEventDAO interface {
 	CreatePullEvent(ctx context.Context, event FeedPullEvent) error
-	FindPullEvents(ctx context.Context, uids []int64, timestamp, limit int64) ([]FeedPullEvent, error)
-	FindPullEventListWithTyp(ctx context.Context, typ string, uids []int64, timestamp, limit int64) ([]FeedPullEvent, error)
+	FindPullEvents(ctx context.Context, uids []int64, timestamp time.Time, limit int64) ([]FeedPullEvent, error)
+	FindPullEventListWithTyp(ctx context.Context, typ string, uids []int64, timestamp time.Time, limit int64) ([]FeedPullEvent, error)
 }
 
 type feedPullEventDAO struct {
@@ -38,11 +38,11 @@ func (f *feedPullEventDAO) CreatePullEvent(ctx context.Context, event FeedPullEv
 	return f.master.WithContext(ctx).Create(&event).Error
 }
 
-func (f *feedPullEventDAO) FindPullEventListWithTyp(ctx context.Context, typ string, uids []int64, timestamp, limit int64) ([]FeedPullEvent, error) {
+func (f *feedPullEventDAO) FindPullEventListWithTyp(ctx context.Context, typ string, uids []int64, timestamp time.Time, limit int64) ([]FeedPullEvent, error) {
 	var events []FeedPullEvent
 	err := f.RandSalve().WithContext(ctx).
 		Where("uid in ?", uids).
-		Where("ctime < ?", timestamp).
+		Where("ctime < ?", timestamp.UnixMilli()).
 		Where("type = ?", typ).
 		Order("ctime desc").
 		Limit(int(limit)).
@@ -50,11 +50,11 @@ func (f *feedPullEventDAO) FindPullEventListWithTyp(ctx context.Context, typ str
 	return events, err
 }
 
-func (f *feedPullEventDAO) FindPullEvents(ctx context.Context, uids []int64, timestamp, limit int64) ([]FeedPullEvent, error) {
+func (f *feedPullEventDAO) FindPullEvents(ctx context.Context, uids []int64, timestamp time.Time, limit int64) ([]FeedPullEvent, error) {
 	var events []FeedPullEvent
 	err := f.RandSalve().WithContext(ctx).
 		Where("uid in ?", uids).
-		Where("ctime < ?", timestamp).
+		Where("ctime < ?", timestamp.UnixMilli()).
 		Order("ctime desc").
 		Limit(int(limit)).
 		Find(&events).Error
@@ -73,8 +73,8 @@ type FeedPullEvent struct {
 
 type FeedPushEventDAO interface {
 	CreatePushEvents(ctx context.Context, events []FeedPushEvent) error
-	GetPushEvents(ctx context.Context, uid int64, timestamp, limit int64) ([]FeedPushEvent, error)
-	GetPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp, limit int64) ([]FeedPushEvent, error)
+	GetPushEvents(ctx context.Context, uid int64, timestamp time.Time, limit int64) ([]FeedPushEvent, error)
+	GetPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp time.Time, limit int64) ([]FeedPushEvent, error)
 }
 
 type feedPushEventDAO struct {
@@ -99,11 +99,11 @@ func (f *feedPushEventDAO) CreatePushEvents(ctx context.Context, events []FeedPu
 	return f.master.WithContext(ctx).Create(events).Error
 }
 
-func (f *feedPushEventDAO) GetPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp, limit int64) ([]FeedPushEvent, error) {
+func (f *feedPushEventDAO) GetPushEventsWithTyp(ctx context.Context, typ string, uid int64, timestamp time.Time, limit int64) ([]FeedPushEvent, error) {
 	var events []FeedPushEvent
 	err := f.RandSalve().WithContext(ctx).
 		Where("uid = ?", uid).
-		Where("ctime < ?", timestamp).
+		Where("ctime < ?", timestamp.UnixMilli()).
 		Where("type = ?", typ).
 		Order("ctime desc").
 		Limit(int(limit)).
@@ -111,11 +111,11 @@ func (f *feedPushEventDAO) GetPushEventsWithTyp(ctx context.Context, typ string,
 	return events, err
 }
 
-func (f *feedPushEventDAO) GetPushEvents(ctx context.Context, uid int64, timestamp, limit int64) ([]FeedPushEvent, error) {
+func (f *feedPushEventDAO) GetPushEvents(ctx context.Context, uid int64, timestamp time.Time, limit int64) ([]FeedPushEvent, error) {
 	var events []FeedPushEvent
 	err := f.RandSalve().WithContext(ctx).
 		Where("uid = ?", uid).
-		Where("ctime < ?", timestamp).
+		Where("ctime < ?", timestamp.UnixMilli()).
 		Order("ctime desc").
 		Limit(int(limit)).
 		Find(&events).Error

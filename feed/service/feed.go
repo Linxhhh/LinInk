@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/Linxhhh/LinInk/api/proto/follow"
@@ -55,7 +53,7 @@ func (f *FeedEventService) CreateFeedEvent(ctx context.Context, feed domain.Feed
 		})
 	} else {
 		// 推模型（推送给粉丝）
-		listResp, err := f.follCli.GetFollowerList(ctx, &follow.GetFollowerListRequest{
+		listResp, err := f.follCli.GetFollowerIdList(ctx, &follow.GetFollowerListRequest{
 			FolloweeId: uid,
 			Page:       1,
 			PageSize:   100000,
@@ -78,15 +76,16 @@ func (f *FeedEventService) CreateFeedEvent(ctx context.Context, feed domain.Feed
 }
 
 // GetFeedEventList 查询发件箱和收信箱
-func (f *FeedEventService) GetFeedEventList(ctx context.Context, uid int64, timestamp, limit int64) ([]domain.FeedEvent, error) {
+func (f *FeedEventService) GetFeedEventList(ctx context.Context, uid int64, pushEvtTimestamp, pullEvtTimestamp time.Time, limit int64) (pullEvents, pushEvents []domain.FeedEvent, err error) {
 
 	var eg errgroup.Group
-	var lock sync.Mutex
-	events := make([]domain.FeedEvent, 0, limit*2)
+	pullEvents = make([]domain.FeedEvent, 0, limit)
+	pushEvents = make([]domain.FeedEvent, 0, limit)
+
 
 	eg.Go(func() error {
 		// 获取关注列表
-		listResp, err := f.follCli.GetFolloweeList(ctx, &follow.GetFolloweeListRequest{
+		listResp, err := f.follCli.GetFolloweeIdList(ctx, &follow.GetFolloweeListRequest{
 			FollowerId: uid,
 			Page:       1,
 			PageSize:   100000,
@@ -97,36 +96,24 @@ func (f *FeedEventService) GetFeedEventList(ctx context.Context, uid int64, time
 		followees := listResp.GetFolloweeList()
 
 		// 查询发件箱
-		evts, err := f.repo.FindPullEvents(ctx, followees, timestamp, limit)
+		evts, err := f.repo.FindPullEvents(ctx, followees, pullEvtTimestamp, limit)
 		if err != nil {
 			return err
 		}
-		lock.Lock()
-		events = append(events, evts...)
-		lock.Unlock()
+		pullEvents = append(pullEvents, evts...)
 		return nil
 	})
 
 	eg.Go(func() error {
 		// 查询收件箱
-		evts, err := f.repo.FindPushEvents(ctx, uid, timestamp, limit)
+		evts, err := f.repo.FindPushEvents(ctx, uid, pushEvtTimestamp, limit)
 		if err != nil {
 			return err
 		}
-		lock.Lock()
-		events = append(events, evts...)
-		lock.Unlock()
+		pushEvents = append(pushEvents, evts...)
 		return nil
 	})
 
-	err := eg.Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	// 按照时间戳排序
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].Ctime.UnixMilli() > events[j].Ctime.UnixMilli()
-	})
-	return events[:min(len(events), int(limit))], nil
+	err = eg.Wait()
+	return
 }

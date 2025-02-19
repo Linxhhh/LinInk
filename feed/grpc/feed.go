@@ -27,15 +27,18 @@ func (server *FeedServiceServer) Create(ctx context.Context, req *pb.CreateReque
 }
 
 func (server *FeedServiceServer) GetList(ctx context.Context, req *pb.GetListRequest) (*pb.GetListResponse, error) {
-	evts, err := server.svc.GetFeedEventList(ctx, req.GetUid(), req.GetTimestamp(), req.GetLimit())
+	pullEvts, pushEvts, err := server.svc.GetFeedEventList(ctx, req.GetUid(), req.GetPushEvtTimestamp().AsTime(), req.GetPullEvtTimestamp().AsTime(), req.GetLimit())
 	if err != nil {
 		return &pb.GetListResponse{}, err
 	}
-	var list []*pb.FeedEvent
-	for _, evt := range evts {
-		list = append(list, convertToPb(evt))
+	var pullEvtlist, pushEvtlist []*pb.FeedEvent
+	for _, evt := range pullEvts {
+		pullEvtlist = append(pullEvtlist, convertToPb(evt))
 	}
-	return &pb.GetListResponse{List: list}, err
+	for _, evt := range pushEvts {
+		pushEvtlist = append(pushEvtlist, convertToPb(evt))
+	}
+	return &pb.GetListResponse{PullEvtList: pullEvtlist, PushEvtList: pushEvtlist}, err
 }
 
 // 类型转换：pb.FeedEvent -> domain.FeedEvent
