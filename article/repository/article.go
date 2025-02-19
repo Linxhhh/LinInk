@@ -16,7 +16,7 @@ var ErrIncorrectArticleorAuthor = dao.ErrIncorrectArticleorAuthor
 type ArticleRepository interface {
 	Insert(ctx context.Context, article domain.Article) (int64, error)
 	Update(ctx context.Context, article domain.Article) error
-	Sync(ctx context.Context, article domain.Article) (int64, error)
+	Sync(ctx context.Context, article domain.Article) (domain.Article, error)
 	SyncStatus(ctx context.Context, uid int64, aid int64, status domain.ArticleStatus) error
 	CountByAuthor(ctx context.Context, uid int64) (int64, error)
 	GetListByAuthor(ctx context.Context, uid int64, offset, limit int) ([]domain.ArticleListElem, error)
@@ -72,9 +72,9 @@ func (repo *CacheArticleRepository) Update(ctx context.Context, article domain.A
 	return err
 }
 
-func (repo *CacheArticleRepository) Sync(ctx context.Context, article domain.Article) (int64, error) {
+func (repo *CacheArticleRepository) Sync(ctx context.Context, article domain.Article) (domain.Article, error) {
 
-	aid, err := repo.dao.Sync(ctx, dao.Article{
+	art, err := repo.dao.Sync(ctx, dao.Article{
 		Id:       article.Id,
 		Title:    article.Title,
 		Content:  article.Content,
@@ -88,8 +88,14 @@ func (repo *CacheArticleRepository) Sync(ctx context.Context, article domain.Art
 			// 设置帖子缓存
 			repo.cache.SetPub(ctx, article)
 		}()
+	} else {
+		return domain.Article{}, err
 	}
-	return aid, err
+
+	article.Id = art.Id
+	article.Utime = time.UnixMilli(art.Utime)
+	article.Ctime = time.UnixMilli(art.Ctime)
+	return article, err
 }
 
 func (repo *CacheArticleRepository) SyncStatus(ctx context.Context, uid int64, aid int64, status domain.ArticleStatus) error {

@@ -15,7 +15,7 @@ var ErrIncorrectArticleorAuthor = errors.New("帖子或作者ID错误")
 type ArticleDAO interface {
 	Insert(ctx context.Context, article Article) (int64, error)
 	Update(ctx context.Context, article Article) error
-	Sync(ctx context.Context, article Article) (int64, error)
+	Sync(ctx context.Context, article Article) (Article, error)
 	SyncStatus(ctx context.Context, uid int64, aid int64, status uint8) error
 	CountByAuthor(ctx context.Context, uid int64) (int64, error)
 	GetListByAuthor(ctx context.Context, uid int64, offset, limit int) ([]Article, error)
@@ -82,7 +82,7 @@ func (dao *GormArticleDAO) Update(ctx context.Context, article Article) error {
 }
 
 // Sync 使用事务，先存储制作库，再同步线上库
-func (dao *GormArticleDAO) Sync(ctx context.Context, article Article) (int64, error) {
+func (dao *GormArticleDAO) Sync(ctx context.Context, article Article) (Article, error) {
 
 	// 使用事务
 	err := dao.master.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -103,7 +103,7 @@ func (dao *GormArticleDAO) Sync(ctx context.Context, article Article) (int64, er
 		err = dao.upsert(ctx, tx, article)
 		return err
 	})
-	return article.Id, err
+	return article, err
 }
 
 // upsert 新建帖子，或者更新帖子到线上库中

@@ -5,6 +5,7 @@ import (
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/user"
+	"github.com/Linxhhh/LinInk/user/events"
 	server "github.com/Linxhhh/LinInk/user/grpc"
 	"github.com/Linxhhh/LinInk/user/ioc"
 	"github.com/Linxhhh/LinInk/user/repository"
@@ -26,9 +27,14 @@ func main() {
 	master, slave := ioc.InitDB()
 	dao := dao.NewUserDAO(master, slave)
 	
+	// init event producer
+	cli := ioc.InitSaramaClient()
+	pdr := ioc.InitSyncProducer(cli)
+	syncPdr := events.NewUserSyncEventProducer(pdr)
+
 	// Create code service server
 	repo := repository.NewUserRepository(dao, cache)
-	svc := service.NewUserService(repo)
+	svc := service.NewUserService(repo, syncPdr)
 	svr := server.NewUserServiceServer(svc)
 
 	// Register service

@@ -45,6 +45,7 @@ func main() {
 	// init publish and read event producer
 	publishPdr := events.NewArticlePublishEventProducer(pdr)
 	readPdr := events.NewArticleReadEventProducer(pdr)
+	syncPdr := events.NewArticleSyncEventProducer(pdr)
 
 	// init read event consumer
 	readCsmr := events.NewArticleReadEventConsumer(cli, interCli)
@@ -53,7 +54,7 @@ func main() {
 	}()
 
 	// init article service
-	svc := service.NewArticleService(repo, userCli, interCli, feedCli, publishPdr, readPdr)
+	svc := service.NewArticleService(repo, userCli, interCli, feedCli, publishPdr, readPdr, syncPdr)
 
 	// init article service server
 	svr := server.NewArticleServiceServer(svc)

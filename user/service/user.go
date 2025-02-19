@@ -5,43 +5,46 @@ import (
 	"errors"
 
 	"github.com/Linxhhh/LinInk/user/domain"
+	"github.com/Linxhhh/LinInk/user/events"
 	"github.com/Linxhhh/LinInk/user/repository"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrDuplicateEmailorPhone = repository.ErrDuplicateEmailorPhone
+	ErrDuplicateEmailorPhone  = repository.ErrDuplicateEmailorPhone
 	ErrInvalidEmailOrPassword = errors.New("邮箱或密码错误")
 )
 
-/* 
+/*
 这里不使用接口，是因为 <用户服务> 的可替换性不高
 一般来说，可能替换的是下层的数据存储方式，即 repository.UserRepository
 */
 
 type UserService struct {
-	repo repository.UserRepository
+	repo    repository.UserRepository
+	syncPdr *events.UserSyncEventProducer
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
+func NewUserService(repo repository.UserRepository, syncPdr *events.UserSyncEventProducer) *UserService {
 	return &UserService{
-		repo: repo,
+		repo:    repo,
+		syncPdr: syncPdr,
 	}
 }
 
-/* 
+/*
 SignUp 用户注册服务：
 先进行密码加密，再调用存储层，进行数据存储
 */
 func (svc *UserService) SignUp(ctx context.Context, u domain.User) error {
-	
+
 	// 密码加密
 	hashPwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 	u.Password = string(hashPwd)
-	
+
 	// 数据存储
 	return svc.repo.CreateByEmail(ctx, u)
 }
@@ -66,7 +69,7 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 	if err != nil {
 		return user, ErrInvalidEmailOrPassword
 	}
-	
+
 	return user, err
 }
 
@@ -75,7 +78,18 @@ Edit 信息编辑服务：
 直接调用存储层，进行数据更新
 */
 func (us *UserService) Edit(ctx context.Context, u domain.User) error {
-	return us.repo.Update(ctx, u)
+	u, err := us.repo.Update(ctx, u)
+	if err != nil {
+		return err
+	}
+
+	// 同步用户信息到 elasticsearch
+	err = us.syncPdr.Produce(events.UserSyncEvent{
+		Id:           u.Id,
+		NickName:     u.NickName,
+		Introduction: u.Introduction,
+	})
+	return err
 }
 
 /*

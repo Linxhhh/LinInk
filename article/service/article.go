@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gorm.io/gorm"
 )
@@ -29,12 +30,14 @@ type ArticleService struct {
 	feedCli    feed.FeedServiceClient
 	publishPdr *events.ArticlePublishEventProducer
 	readPdr    *events.ArticleReadEventProducer
+	syncPdr    *events.ArticleSyncEventProducer
 	Biz        string
 }
 
 func NewArticleService(repo repository.ArticleRepository,
 	userCli user.UserServiceClient, interCli interaction.InteractionServiceClient, feedCli feed.FeedServiceClient,
-	publishPdr *events.ArticlePublishEventProducer, readPdr *events.ArticleReadEventProducer) *ArticleService {
+	publishPdr *events.ArticlePublishEventProducer, readPdr *events.ArticleReadEventProducer,
+	syncPdr *events.ArticleSyncEventProducer) *ArticleService {
 
 	return &ArticleService{
 		repo:       repo,
@@ -43,6 +46,7 @@ func NewArticleService(repo repository.ArticleRepository,
 		feedCli:    feedCli,
 		publishPdr: publishPdr,
 		readPdr:    readPdr,
+		syncPdr:    syncPdr,
 		Biz:        "article",
 	}
 }
@@ -62,26 +66,49 @@ func (as *ArticleService) Save(ctx context.Context, art domain.Article) (int64, 
 
 func (as *ArticleService) Publish(ctx context.Context, art domain.Article) (int64, error) {
 	art.Status = domain.ArticleStatusPublished
-	aid, err := as.repo.Sync(ctx, art)
+	art, err := as.repo.Sync(ctx, art)
 	if err != nil {
 		return 0, err
 	}
 
+	var eg errgroup.Group
+
 	// 生成 feed 事件
-	go func() {
-		if err == nil {
-			as.publishPdr.Produce(events.ArticlePublishEvent{
-				Aid:   aid,
-				Uid:   art.AuthorId,
-				Title: art.Title,
-			})
-		}
-	}()
-	return aid, err
+	eg.Go(func() error {
+		return as.publishPdr.Produce(events.ArticlePublishEvent{
+			Aid:   art.Id,
+			Uid:   art.AuthorId,
+			Title: art.Title,
+		})
+	})
+
+	// 同步 article 到 elasticSearch
+	eg.Go(func() error {
+		return as.syncPdr.Produce(events.ArticleSyncEvent{
+			Id:       art.Id,
+			Title:    art.Title,
+			Content:  art.Content,
+			AuthorId: art.AuthorId,
+			Status:   int32(art.Status),
+			Utime:    art.Utime,
+			Ctime:    art.Ctime,
+		})
+	})
+	err = eg.Wait()
+	return art.Id, err
 }
 
 func (as *ArticleService) Withdraw(ctx context.Context, uid int64, aid int64) error {
-	return as.repo.SyncStatus(ctx, uid, aid, domain.ArticleStatusPrivate)
+	err := as.repo.SyncStatus(ctx, uid, aid, domain.ArticleStatusPrivate)
+	if err != nil {
+		return err
+	}
+
+	// 同步 article status 到 elasticSearch
+	err = as.syncPdr.ProduceWithdraw(events.ArticleWithdrawEvent{
+		Id: aid,
+	})
+	return err
 }
 
 func (as *ArticleService) Count(ctx context.Context, uid int64) (int64, error) {

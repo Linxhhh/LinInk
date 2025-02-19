@@ -21,7 +21,7 @@ type UserRepository interface {
 	SearchById(ctx context.Context, id int64) (domain.User, error)
 	SearchByEmail(ctx context.Context, email string) (domain.User, error)
 	SearchByPhone(ctx context.Context, phone string) (int64, error)
-	Update(ctx context.Context, u domain.User) error
+	Update(ctx context.Context, u domain.User) (domain.User, error)
 }
 
 type CacheUserRepository struct {
@@ -106,8 +106,8 @@ func (repo *CacheUserRepository) SearchByPhone(ctx context.Context, phone string
 	return user.Id, err
 }
 
-func (repo *CacheUserRepository) Update(ctx context.Context, u domain.User) error {
-	err := repo.dao.Update(ctx, dao.User{
+func (repo *CacheUserRepository) Update(ctx context.Context, u domain.User) (domain.User, error) {
+	user, err := repo.dao.Update(ctx, dao.User{
 		Id:           u.Id,
 		NickName:     u.NickName,
 		Birthday:     u.Birthday.UnixMilli(),
@@ -118,6 +118,12 @@ func (repo *CacheUserRepository) Update(ctx context.Context, u domain.User) erro
 			// 清除缓存
 			repo.cache.Del(ctx, u.Id)
 		}()
+	} else {
+		return domain.User{}, err
 	}
-	return err
+
+	u.NickName = user.NickName
+	u.Birthday = time.UnixMilli(user.Birthday)
+	u.Introduction = user.Introduction
+	return u, err
 }

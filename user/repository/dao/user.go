@@ -21,7 +21,7 @@ type UserDAO interface {
 	SearchById(ctx context.Context, id int64) (User, error)
 	SearchByEmail(ctx context.Context, email string) (User, error)
 	SearchByPhone(ctx context.Context, phone string) (User, error)
-	Update(ctx context.Context, u User) error
+	Update(ctx context.Context, u User) (User, error)
 }
 
 // UserDAO 数据库存储实例
@@ -96,11 +96,11 @@ func (dao *GormUserDAO) SearchByPhone(ctx context.Context, phone string) (User, 
 }
 
 // Update 更新用户个人信息
-func (dao *GormUserDAO) Update(ctx context.Context, u User) error {
+func (dao *GormUserDAO) Update(ctx context.Context, u User) (User, error) {
 
 	var user User
 	if result := dao.master.WithContext(ctx).First(&user, User{Id: u.Id}); result.Error != nil {
-        return result.Error
+        return User{}, result.Error
     }
 	if u.NickName != "" {
 		user.NickName = u.NickName
@@ -112,7 +112,8 @@ func (dao *GormUserDAO) Update(ctx context.Context, u User) error {
 		user.Introduction = u.Introduction
 	}
 	user.UTime = time.Now().UnixMilli()
-	return dao.master.WithContext(ctx).Save(&user).Error
+	err := dao.master.WithContext(ctx).Save(&user).Error
+	return user, err
 }
 
 // User 数据库表结构
