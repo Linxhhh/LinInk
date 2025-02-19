@@ -40,25 +40,51 @@ func (server *FollowServiceServer) GetFollowed(ctx context.Context, req *pb.GetF
 	return &pb.GetFollowedResponse{IsFollowed: isFollowed}, err
 }
 
+func (server *FollowServiceServer) GetFolloweeIdList(ctx context.Context, req *pb.GetFolloweeListRequest) (*pb.GetFolloweeIdListResponse, error) {
+	followeeList, err := server.svc.GetFolloweeIdList(ctx, req.GetFollowerId(), int(req.GetPage()), int(req.GetPageSize()))
+	return &pb.GetFolloweeIdListResponse{FolloweeList: followeeList}, err
+}
+
+func (server *FollowServiceServer) GetFollowerIdList(ctx context.Context, req *pb.GetFollowerListRequest) (*pb.GetFollowerIdListResponse, error) {
+	followerList, err := server.svc.GetFollowerIdList(ctx, req.GetFolloweeId(), int(req.GetPage()), int(req.GetPageSize()))
+	return &pb.GetFollowerIdListResponse{FollowerList: followerList}, err
+}
+
 func (server *FollowServiceServer) GetFolloweeList(ctx context.Context, req *pb.GetFolloweeListRequest) (*pb.GetFolloweeListResponse, error) {
 	followeeList, err := server.svc.GetFolloweeList(ctx, req.GetFollowerId(), int(req.GetPage()), int(req.GetPageSize()))
-	return &pb.GetFolloweeListResponse{FolloweeList: followeeList}, err
+	return &pb.GetFolloweeListResponse{FolloweeList: convertToPbList(followeeList)}, err
 }
 
 func (server *FollowServiceServer) GetFollowerList(ctx context.Context, req *pb.GetFollowerListRequest) (*pb.GetFollowerListResponse, error) {
 	followerList, err := server.svc.GetFollowerList(ctx, req.GetFolloweeId(), int(req.GetPage()), int(req.GetPageSize()))
-	return &pb.GetFollowerListResponse{FollowerList: followerList}, err
+	return &pb.GetFollowerListResponse{FollowerList: convertToPbList(followerList)}, err
 }
 
 // 类型转换：domain.FollowData -> pb.FollowData
 func convertToPb(f domain.FollowData) *pb.FollowData {
 	resp := &pb.FollowData{
-		Id:    f.Id,
-		Uid:   f.Uid,
+		Id:        f.Id,
+		Uid:       f.Uid,
 		Followers: f.Followers,
 		Followees: f.Followees,
-		Ctime: timestamppb.New(f.Ctime),
-		Utime: timestamppb.New(f.Utime),
+		Ctime:     timestamppb.New(f.Ctime),
+		Utime:     timestamppb.New(f.Utime),
+	}
+	return resp
+}
+
+// 类型转换：domain.FollowListData -> pb.FollowListData
+func convertToPbList(list []domain.FollowListData) []*pb.FollowListData {
+	var resp []*pb.FollowListData
+	for _, i := range list {
+		var item = pb.FollowListData{
+			Uid:        i.Uid,
+			NickName:   i.NickName,
+			Followers:  i.Followers,
+			Followees:  i.Followees,
+			IsFollowed: i.IsFollowed,
+		}
+		resp = append(resp, &item)
 	}
 	return resp
 }

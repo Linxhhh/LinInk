@@ -22,3 +22,11 @@ type FollowRelation struct {
 	Ctime    int64
 	Utime    int64
 }
+
+type FollowListData struct {
+	Uid        int64
+	NickName   string
+	Followers  int64
+	Followees  int64
+	IsFollowed bool
+}

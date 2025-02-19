@@ -24,9 +24,13 @@ func main() {
 	cmd := ioc.InitCache()
 	cache := cache.NewFollowCache(cmd)
 
+	// init client
+	etcdCli := ioc.InitEtcdClient()
+	userCli := ioc.InitUserRpcClient(etcdCli)
+
 	// init service
 	repo := repository.NewFollowRepository(dao, cache)
-	svc := service.NewFollowService(repo)
+	svc := service.NewFollowService(repo, userCli)
 
 	// create service server
 	svr := server.NewFollowServiceServer(svc)
@@ -42,7 +46,6 @@ func main() {
 	}
 	
 	// register to etcd
-	etcdCli := ioc.InitEtcdClient()
 	if err = ioc.RegisterToEtcd(etcdCli); err != nil {
 		log.Fatal(err)
 	}
