@@ -5,6 +5,7 @@ import (
 	"net"
 
 	pb "github.com/Linxhhh/LinInk/api/proto/interaction"
+	"github.com/Linxhhh/LinInk/interaction/events"
 	server "github.com/Linxhhh/LinInk/interaction/grpc"
 	"github.com/Linxhhh/LinInk/interaction/ioc"
 	"github.com/Linxhhh/LinInk/interaction/repository"
@@ -29,6 +30,15 @@ func main() {
 
 	// init interaction service
 	svc := service.NewInteractionService(repo)
+
+	// init sarama client
+	saramaCli := ioc.InitSaramaClient()
+
+	// init read event consumer
+	readCsmr := events.NewArticleReadEventConsumer(saramaCli, svc)
+	go func ()  {
+		readCsmr.StartBatch("article_read")	
+	}()
 
 	// Create interaction service server
 	svr := server.NewInteractionServiceServer(svc)

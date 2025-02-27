@@ -47,12 +47,6 @@ func main() {
 	readPdr := events.NewArticleReadEventProducer(pdr)
 	syncPdr := events.NewArticleSyncEventProducer(pdr)
 
-	// init read event consumer
-	readCsmr := events.NewArticleReadEventConsumer(cli, interCli)
-	go func ()  {
-		readCsmr.StartBatch("article_read")	
-	}()
-
 	// init article service
 	svc := service.NewArticleService(repo, userCli, interCli, feedCli, publishPdr, readPdr, syncPdr)
 

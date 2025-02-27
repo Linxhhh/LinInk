@@ -227,8 +227,16 @@ func (as *ArticleService) FeedList(ctx context.Context, uid int64, pushEvtTimest
 
 	pullEvtList := resp.GetPullEvtList()
 	artPullList := make([]domain.Article, 0, len(pullEvtList))
+	aidPullMap := make(map[int]bool, len(pullEvtList))
 	for _, evt := range pullEvtList {
-		art, err := as.repo.GetPubById(ctx, getAidFromEvt(evt))
+		
+		aid := getAidFromEvt(evt)
+		if aidPullMap[int(aid)] {
+			continue
+		}
+		aidPullMap[int(aid)] = true
+
+		art, err := as.repo.GetPubById(ctx, aid)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
@@ -247,8 +255,16 @@ func (as *ArticleService) FeedList(ctx context.Context, uid int64, pushEvtTimest
 
 	pushEvtList := resp.GetPushEvtList()
 	artPushList := make([]domain.Article, 0, len(pushEvtList))
+	aidPushMap := make(map[int]bool, len(pushEvtList))
 	for _, evt := range pushEvtList {
-		art, err := as.repo.GetPubById(ctx, getAidFromEvt(evt))
+
+		aid := getAidFromEvt(evt)
+		if aidPushMap[int(aid)] {
+			continue
+		}
+		aidPushMap[int(aid)] = true
+
+		art, err := as.repo.GetPubById(ctx, aid)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				continue
